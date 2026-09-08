@@ -143,8 +143,8 @@ end
 --Formats time to xm ys.z
 local function formatTime(time)
     local mins = floor(time / 60)
-    local secs = time % 60
-    return fmt("%dm %.2fs", mins, secs)
+    local secs = ceil(time % 60)
+    return fmt("%dm %ds", mins, secs)
 end
 
 --Validates that RXPCData.professions.profession1 and RXPCData.professions.profession2 are set up correctly
@@ -238,6 +238,16 @@ end
 local function deepCopyTable(tbl)
     if type(tbl) ~= "table" then return nil end
     return deepCopyTableAUX(tbl, {})
+end
+
+--Reverts a map
+local function revertMap(map, snapshot)
+    for k, _ in pairs(map) do
+        map[k] = nil
+    end
+    for k, v in pairs(snapshot) do
+        map[k] = v
+    end
 end
 
 --Serializes RXPCData.professions to string for debugging purposes
@@ -364,6 +374,8 @@ addon.professions.profSession = {
     ahIsShowing = false,
     sentQuery = false,
     isScanning = false,
+    isBuying = false,
+    doLogging = false,
 }
 
 function addon.professions.profSession:Reset()
@@ -373,6 +385,8 @@ function addon.professions.profSession:Reset()
     self.currentPage = 0
     self.sentQuery = false
     self.isScanning = false
+    self.isBuying = false
+    self.doLogging = false
     self.currentItemName = ""
     self.materialIndex = 1
     self.recipesToConsider = {}
@@ -809,7 +823,9 @@ end
 function addon.professions:isCompositeRecipe(professionName, recipeName)
     if not PROFESSIONS[professionName].RECIPES[recipeName] then return false end --TODO: this solves the problem but shouldn't really be here at all
     for materialName, _ in pairs(PROFESSIONS[professionName].RECIPES[recipeName].materials) do
-       if PROFESSIONS[professionName].RECIPES[materialName] then return true end
+        if addon.professions:isCompositeMaterial(professionName, materialName) then
+            return true
+        end
     end
     return false
 end
@@ -942,14 +958,14 @@ local function getSortedKeys(sortedRecipesByPrice)
 end
 
 --Calculate how many more of the recipe we can create
-local function calculateHowManyMoreAbleToMake(professionName, recipeName, leftovers)
+local function calculateHowManyMoreAbleToMake(professionName, recipeName, leftovers, maxToMake, toRemove)
     local howManyMoreCanWeMake = 0
     local tempToRemove = {}
     local isDone = false
     while not isDone do
         for materialName, materialTable in pairs(PROFESSIONS[professionName].RECIPES[recipeName].materials) do
             if not leftovers[materialName] then
-                isDone = false
+                isDone = true
                 break
             end
             if leftovers[materialName] - (tempToRemove[materialName] or 0) < materialTable.count then
@@ -962,6 +978,14 @@ local function calculateHowManyMoreAbleToMake(professionName, recipeName, leftov
             howManyMoreCanWeMake = howManyMoreCanWeMake + 1
         end
     end
+    if howManyMoreCanWeMake > 0 then
+        for materialName, materialTable in pairs(PROFESSIONS[professionName].RECIPES[recipeName].materials) do
+            toRemove[materialName] = (toRemove[materialName] or 0) + materialTable.count * howManyMoreCanWeMake
+            if toRemove[materialName] <= 0 then --should never be below 0, for safety only
+                toRemove[materialName] = nil
+            end
+        end
+    end
     return howManyMoreCanWeMake
 end
 
@@ -969,13 +993,12 @@ end
 --returns price, howManyToBuy, howManyToCraft, isPossible
 function addon.professions:buyOrCraftPrice(professionName, recipeName, materialName, removedTable)
     local price = 0
-    local materialTable = PROFESSIONS[professionName].RECIPES[recipeName].materials
+    local materialTable = PROFESSIONS[professionName].RECIPES[recipeName].materials[materialName]
     local howManyNeeded = materialTable.count - (profSession.backpack[materialName] or 0) + (removedTable[materialName] or 0)
     if howManyNeeded <= 0 then
         return 0, 0, 0
     end
     local buyAllPrice, craftAllPrice = -1, -1
-    local leftovers = {-1, -1}
     local saveFoundItemsKeys = CopyTable(profSession.foundItemsKeys, false)
     local canBuy, canCraft = true, true
     --Buy method
@@ -991,30 +1014,28 @@ function addon.professions:buyOrCraftPrice(professionName, recipeName, materialN
         foundItemTable = profSession.foundItems[materialName][profSession.foundItemsKeys[materialName]]
         if buyAllPrice == -1 then buyAllPrice = 0 end
         buyAllPrice = buyAllPrice + foundItemTable.price
-        for i = 1, foundItemTable.count do
+        for _ = 1, foundItemTable.count do
             tinsert(pricesPerBuy, {foundItemTable.price, foundItemTable.count})
         end
         howManyNeeded = howManyNeeded - foundItemTable.count
         buyCount = buyCount + foundItemTable.count
         profSession.foundItemsKeys[materialName] = profSession.foundItemsKeys[materialName] + 1
     end
-    if canBuy then
-        leftovers[1] = -howManyNeeded
-    end
     --Revert and try the other method
     howManyNeeded = saveHowManyNeeded
-    profSession.foundItemsKeys = saveFoundItemsKeys
+    revertMap(profSession.foundItemsKeys, saveFoundItemsKeys)
     --Craft method
     --Save everything before
-    saveFoundItemsKeys = CopyTable(profSession.foundItemsKeys, false)
+    local saveFoundItemsKeys2 = CopyTable(profSession.foundItemsKeys, false)
     local saveBackpack = CopyTable(profSession.backpack, false)
     local saveItemsToBuy = CopyTable(profSession.itemsToBuy, false)
     local saveRecipesToCraft = CopyTable(profSession.recipesToCraft, false)
+    local saveRemovedTable = CopyTable(removedTable, false)
     local pricesPerCraft = {}
     local craftCount = 0
     local pricePerCraft, isPossible, howManyMoreMade
     while howManyNeeded > 0 do
-        pricePerCraft, isPossible = addon.professions:calculateRecipeCurrentPrice()
+        pricePerCraft, isPossible = addon.professions:calculateRecipeCurrentPrice(professionName, materialName, -1, {}, removedTable, {}, {})
         if craftAllPrice == - 1 then craftAllPrice = 0 end
         craftAllPrice = craftAllPrice + pricePerCraft
         tinsert(pricesPerCraft, pricePerCraft)
@@ -1022,7 +1043,7 @@ function addon.professions:buyOrCraftPrice(professionName, recipeName, materialN
             howManyNeeded = howManyNeeded - 1
             craftCount = craftCount + 1
             if howManyNeeded > 0 then
-                howManyMoreMade = calculateHowManyMoreAbleToMake(professionName, materialName, profSession.backpack)
+                howManyMoreMade = calculateHowManyMoreAbleToMake(professionName, materialName, profSession.backpack, howManyNeeded, removedTable)
                 howManyNeeded = howManyNeeded - howManyMoreMade
                 craftCount = craftCount + howManyMoreMade
             end
@@ -1031,22 +1052,20 @@ function addon.professions:buyOrCraftPrice(professionName, recipeName, materialN
             break
         end
     end
-    if canCraft then
-        leftovers[2] = -howManyNeeded
-    end
     --Revert crafting back
-    profSession.foundItemsKeys = saveFoundItemsKeys
-    profSession.backpack = saveBackpack
-    profSession.itemsToBuy = saveItemsToBuy
-    profSession.recipesToCraft = saveRecipesToCraft
+    revertMap(profSession.foundItemsKeys, saveFoundItemsKeys2)
+    revertMap(profSession.backpack, saveBackpack)
+    revertMap(profSession.itemsToBuy, saveItemsToBuy)
+    revertMap(profSession.recipesToCraft, saveRecipesToCraft)
+    revertMap(removedTable, saveRemovedTable)
+    howManyNeeded = saveHowManyNeeded
     --Compare which is cheaper
     if not canCraft then
         if canBuy then
-            return (price + buyAllPrice), saveHowManyNeeded, 0, true
+            return (price + buyAllPrice), howManyNeeded, 0, true
         else --cant craft and cant buy
-            howManyNeeded = saveHowManyNeeded
             if buyCount + craftCount < howManyNeeded then
-                return -1, -1, -1, false
+                return -1, 0, 0, false
             end
             local i = 1
             local pricesPerBuyIndex, pricesPerCraftIndex = 1, 1
@@ -1068,17 +1087,12 @@ function addon.professions:buyOrCraftPrice(professionName, recipeName, materialN
         end
     else --Can craft
         if not canBuy then
-            return (price + craftAllPrice), 0, saveHowManyNeeded, true
+            return (price + craftAllPrice), 0, howManyNeeded, true
         else --Can craft and can buy
             if buyAllPrice <= craftAllPrice then
-                --revert crafting
-                profSession.foundItemsKeys = saveFoundItemsKeys
-                profSession.backpack = saveBackpack
-                profSession.itemsToBuy = saveItemsToBuy
-                profSession.recipesToCraft = saveRecipesToCraft
-                return (price + buyAllPrice), saveHowManyNeeded, 0, true
+                return (price + buyAllPrice), howManyNeeded, 0, true
             else
-                return (price + craftAllPrice), 0, saveHowManyNeeded, true
+                return (price + craftAllPrice), 0, howManyNeeded, true
             end
         end
     end
@@ -1087,11 +1101,10 @@ end
 --Calulate the price for 1 craft
 --Returns price, howManyAbleToCraft, isPossible
 function addon.professions:calculateRecipeCurrentPrice(professionName, recipeName, currentSkillLevel, recipeUsage, removedTable, tempItemsToBuy, newBackpack)
-    local price, howManyAbleToCraft = 0, 0
+    local price = 0
     local isPossible = true
 
     local retPrice, retHowManyToBuy, retHowManyToCraft, retIsPossible
-    local saveRemovedTable
 
     local addedMaterials, leftovers
     local foundItemsTable = {}
@@ -1101,16 +1114,28 @@ function addon.professions:calculateRecipeCurrentPrice(professionName, recipeNam
                 removedTable[materialName] = (removedTable[materialName] or 0) + materialTable.count
             else
                 retPrice, retHowManyToBuy, retHowManyToCraft, retIsPossible = addon.professions:buyOrCraftPrice(professionName, recipeName, materialName, removedTable)
-                print("ret", retPrice, retHowManyToBuy, retHowManyToCraft, retIsPossible)
+                price = price + retPrice
                 --Buy needed
                 tempItemsToBuy[materialName] = (tempItemsToBuy[materialName] or 0) + retHowManyToBuy
-                if tempItemsToBuy[materialName] == 0 then tempItemsToBuy[materialName] = nil end
+                if tempItemsToBuy[materialName] <= 0 then
+                    tempItemsToBuy[materialName] = nil
+                end
                 --Craft needed
                 if retHowManyToCraft > 0 then
-                    addon.professions:buyCheapestAndUpdateTables()
-                    addon.professions:updateRecipeUsage()
-                    profSession.backpack[materialName] = (profSession.backpack[materialName] or 0) - retHowManyToCraft
-                    if profSession.backpack[materialName] <= 0 then profSession.backpack[materialName] = nil end
+                    local success = addon.professions:buyCheapestAndUpdateTables(professionName, materialName, currentSkillLevel, retHowManyToCraft, recipeUsage)
+                    if not success then
+                        isPossible = false
+                    elseif profSession.doLogging and profSession.isBuying then
+                        print("  [reagent] Crafted: " .. retHowManyToCraft .. "x " .. materialName .. " for " .. formatMoney(retPrice)
+                            .. " (needed by " .. recipeName .. ") at skill " .. currentSkillLevel)
+                    end
+                    addon.professions:updateRecipeUsage(materialName, currentSkillLevel, recipeUsage)
+                end
+                if profSession.doLogging and isPossible then
+                    removedTable[materialName] = (removedTable[materialName] or 0) - retHowManyToCraft
+                    if removedTable[materialName] <= 0 then
+                        removedTable[materialName] = nil
+                    end
                 end
             end
         elseif PROFESSIONS.VENDOR_ITEMS[materialName] then
@@ -1188,11 +1213,10 @@ function addon.professions:calculateRecipeCurrentPriceForSkillUp(professionName,
     local howManyMoreMade = 0
     while howManyToMake > 0 do
         price, _, isPossible = addon.professions:calculateRecipeCurrentPrice(professionName, recipeName, currentSkillLevel, recipeUsage, removedTable, {}, newTable)
-        print(price, isPossible)
         if isPossible then
             pricesPerCraft[pricesPerCraftIndex] = price
             howManyToMake = howManyToMake - 1
-            howManyMoreMade = calculateHowManyMoreAbleToMake(professionName, recipeName, newTable)
+            howManyMoreMade = calculateHowManyMoreAbleToMake(professionName, recipeName, newTable, #pricesPerCraft - pricesPerCraftIndex + 1, removedTable)
             howManyToMake = howManyToMake - howManyMoreMade
         else
             break
@@ -1270,17 +1294,21 @@ function addon.professions:findCheapest(professionName, recipesAndPrices, curren
 end
 
 --Repopulates profSession tables with new values
-local function repopulateTables(recipeName, howManyToMake, itemsToBuy, itemsToRemove)
+local function repopulateTables(recipeName, howManyToMake, itemsToBuy, itemsToRemove, newBackpack)
     for itemName, itemCount in pairs(itemsToBuy) do
         profSession.itemsToBuy[itemName] = (profSession.itemsToBuy[itemName] or 0) + itemCount
         profSession.backpack[itemName] = (profSession.backpack[itemName] or 0) + itemCount
     end
     profSession.recipesToCraft[recipeName] = (profSession.recipesToCraft[recipeName] or 0) + howManyToMake
+    profSession.backpack[recipeName] = (profSession.backpack[recipeName] or 0) + howManyToMake
     for itemName, itemCount in pairs(itemsToRemove) do
         profSession.backpack[itemName] = (profSession.backpack[itemName] or 0) - itemCount
         if profSession.backpack[itemName] <= 0 then
             profSession.backpack[itemName] = nil
         end
+    end
+    for itemName, itemCount in pairs(newBackpack) do
+        profSession.backpack[itemName] = (profSession.backpack[itemName] or 0) + itemCount
     end
 end
 
@@ -1320,37 +1348,38 @@ function addon.professions:buyCheapestAndUpdateTables(professionName, recipeName
     local removedTable = {}
     local newBackpack = {}
 
-    local price, howManyAbleToMake, isPossible
+    local price, isPossible
     local howManyMoreMade
     local i
     while howManyToMake > 0 do
-        price, howManyAbleToMake, isPossible = addon.professions:calculateRecipeCurrentPrice(professionName, recipeName, currentSkillLevel, recipeUsage, removedTable, tempItemsToBuy, newBackpack)
+        price, _, isPossible = addon.professions:calculateRecipeCurrentPrice(professionName, recipeName, currentSkillLevel, recipeUsage, removedTable, tempItemsToBuy, newBackpack)
         if not isPossible then
             break
         end
-        tinsert(pricesPerCraft, pricesCraftIndex, price)
+        pricesPerCraft[pricesCraftIndex] = price
         howManyToMake = howManyToMake - 1
-        howManyMoreMade = calculateHowManyMoreAbleToMake(profSession, recipeName, newBackpack)
+        howManyMoreMade = calculateHowManyMoreAbleToMake(professionName, recipeName, tempItemsToBuy, #pricesPerCraft - pricesCraftIndex + 1, removedTable)
         howManyToMake = howManyToMake - howManyMoreMade
         pricesCraftIndex = pricesCraftIndex + 1
         --The rest we can make for free
         i = 1
         while i <= howManyMoreMade and pricesCraftIndex <= #pricesPerCraft do
-            tinsert(pricesPerCraft, pricesCraftIndex, 0)
+            pricesPerCraft[pricesCraftIndex] = 0
             pricesCraftIndex = pricesCraftIndex + 1
             i = i + 1
         end
     end
     --Check if possible at all once again
     isPossible = false
+    local actuallyMade = 0
     for _, price in ipairs(pricesPerCraft) do
         if price > -1 then
             isPossible = true
-            break
+            actuallyMade = actuallyMade + 1
         end
     end
     if isPossible then
-        repopulateTables(recipeName, saveHowManyToMake, tempItemsToBuy, removedTable)
+        repopulateTables(recipeName, actuallyMade, tempItemsToBuy, removedTable, newBackpack)
         return true
     else
         return false
@@ -1362,7 +1391,7 @@ local function calculateSellValue(professionName)
     local sellValue = 0.0
     for itemName, itemCount in pairs(profSession.backpack) do
         if PROFESSIONS[professionName].RECIPES[itemName] then
-            sellValue = sellValue + itemCount * PROFESSIONS[profSession].RECIPES[itemName].sellPrice
+            sellValue = sellValue + itemCount * PROFESSIONS[professionName].RECIPES[itemName].sellPrice
         else
             if not PROFESSIONS.VENDOR_ITEMS[itemName] then
                 sellValue = sellValue + itemCount * (profSession.itemAveragePrice[itemName] or 0)
@@ -1406,13 +1435,14 @@ local function removeImpossibleRecipes(recipesAndPrices, impossibleRecipes)
         end
         if isHuge then
             impossibleRecipes[recipeName] = true
+            recipesAndPrices[recipeName] = nil
         end
     end
-    for impossibleRecipeName, isImpossible in pairs(impossibleRecipes) do
-        if isImpossible then
-            recipesAndPrices[impossibleRecipeName] = nil
-        end
-    end
+    --for impossibleRecipeName, isImpossible in pairs(impossibleRecipes) do
+    --    if isImpossible then
+    --        recipesAndPrices[impossibleRecipeName] = nil
+    --    end
+    --end
 end
 
 --[[
@@ -1443,10 +1473,7 @@ local function sortKeysBy(professionName, option)
 end
 
 --Generate path
-function addon.professions:generatePath(professionName, skillLevel, segmentMaxLevel, money)
-    professionName = "tailoring"
-    skillLevel = 1
-    money = 1000000
+function addon.professions.generatePath(professionName, skillLevel, segmentMaxLevel, money)
     --Note to self:
     --we don't need this, we will call it from profSession.recipesToConsider by searching from sortedRecipesKeysOrange
     --which we will sort first
@@ -1459,11 +1486,15 @@ function addon.professions:generatePath(professionName, skillLevel, segmentMaxLe
     --Sort by price per item
     for _, foundItem in pairs(foundItems) do
         tsort(foundItem, function (a, b)
-            return a.pricePerItem < b.pricePerItem
+            if a.pricePerItem ~= b.pricePerItem then
+                return a.pricePerItem < b.pricePerItem
+            else
+                return a.price < b.price
+            end
         end)
     end
     --local foundItemsKeys = {} --pairs [itemName] = counter
-    for itemName, foundItem in pairs(foundItems) do
+    for itemName, _ in pairs(foundItems) do
         profSession.foundItemsKeys[itemName] = 1
     end
 
@@ -1479,6 +1510,7 @@ function addon.professions:generatePath(professionName, skillLevel, segmentMaxLe
             Choose the cheapest
             Repeat until done or impossible to continue
         ]]
+        profSession.isBuying = false
 
         --Select recipes to consider
         local recipesToConsider = gatherRecipesToConsider(professionName, sortedRecipesKeysOrange, currentSkillLevel, impossibleRecipes)
@@ -1490,7 +1522,7 @@ function addon.professions:generatePath(professionName, skillLevel, segmentMaxLe
             local saveFoundItemsKeys = CopyTable(profSession.foundItemsKeys, true)
             local saveBackpack = CopyTable(profSession.backpack)
             local saveRecipeUsage = CopyTable(profSession.recipeUsage)
-            recipesAndPrices[recipeName] = addon.professions:calculateRecipeCurrentPriceForSkillUp(professionName, recipeName, currentSkillLevel, profSession.rrecipeUsage)
+            recipesAndPrices[recipeName] = addon.professions:calculateRecipeCurrentPriceForSkillUp(professionName, recipeName, currentSkillLevel, profSession.recipeUsage)
             if recipesAndPrices[recipeName] == {} then
                 toRemove = toRemove + 1
                 recipesAndPrices[recipeName] = {huge}
@@ -1503,7 +1535,7 @@ function addon.professions:generatePath(professionName, skillLevel, segmentMaxLe
 
         --Debugging print:
         --TODO: make into a function
-        if true then
+        if profSession.doLogging then
             local str = "Considering " .. tostring(tcount(recipesAndPrices)) .. " recipes:"
             print(str)
             local sum
@@ -1519,7 +1551,6 @@ function addon.professions:generatePath(professionName, skillLevel, segmentMaxLe
                     str = str .. " -> impossible"
                 end
                 print(str)
-                print("==========")
             end
         end
 
@@ -1534,11 +1565,6 @@ function addon.professions:generatePath(professionName, skillLevel, segmentMaxLe
         --Find cheapest
         --Returns cheapestRecipeName, cheapestRecipePrice, cheapestRecipePrices
         local cheapestRecipeName, cheapestRecipePrice, cheapestRecipePrices = addon.professions:findCheapest(professionName, recipesAndPrices, currentSkillLevel)
-        print(cheapestRecipeName, cheapestRecipePrice)
-        for i, v in ipairs(cheapestRecipePrices) do
-            print(i, ": ", tostring(v))
-        end
-        print("==========")
         if cheapestRecipeName == "" then
             break
         end
@@ -1548,10 +1574,10 @@ function addon.professions:generatePath(professionName, skillLevel, segmentMaxLe
         if money < cheapestRecipePrice then
             break -- We don't have enought money anymore - break
         end
-        print(cheapestRecipeName, cheapestRecipePrice)
 
         --TODO: add a failsafe system against bloated recipe prices
         --Buy cheapest
+        profSession.isBuying = true
         local percent = calculatePercent(professionName, cheapestRecipeName, currentSkillLevel)
         local howManyToMake = calculateAttemptCount(percent, RXPCData.professions.percentageThreshold)
         local isPossible = addon.professions:buyCheapestAndUpdateTables(professionName, cheapestRecipeName, currentSkillLevel, howManyToMake, profSession.recipeUsage)
@@ -1570,7 +1596,7 @@ function addon.professions:generatePath(professionName, skillLevel, segmentMaxLe
         --Update skill levels gained
         currentSkillLevel = currentSkillLevel + 1
          --Log buying
-        if true then
+        if profSession.doLogging then
             local str = "Crafted: " .. tostring(howManyToMake) .. "x " .. cheapestRecipeName .. " for " .. formatMoney(cheapestRecipePrice) .. "\n"
             str = str .. "Level reached: " .. tostring(currentSkillLevel) .. "\n"
             str = str .. "Current money spent: " .. formatMoney(moneySpent)
@@ -2092,8 +2118,8 @@ function addon.professions.pathToString(professionName, skillLevelReached, skill
     end)
     local firstUse, lastUse, firstConsideration, lastConsideration
     for _, recipeName in ipairs(sortedByOrangeKeys) do
-        firstUse = profSession.recipeUsage[recipeName][1]
-        lastUse = profSession.recipeUsage[recipeName][2]
+        firstUse = (profSession.recipeUsage[recipeName] and profSession.recipeUsage[recipeName][1]) or -1
+        lastUse = (profSession.recipeUsage[recipeName] and profSession.recipeUsage[recipeName][2]) or -1
         firstConsideration = (profSession.recipeConsideration[recipeName] and profSession.recipeConsideration[recipeName][1]) or -1
         lastConsideration = (profSession.recipeConsideration[recipeName] and profSession.recipeConsideration[recipeName][2]) or -1
         sb:append(recipeName):append(" -> "):append(profSession.recipesToCraft[recipeName]):append(" | ("):append(firstUse):append(", "):append(lastUse):append(") | ("):append(firstConsideration):append(", "):append(lastConsideration):append(")\n")

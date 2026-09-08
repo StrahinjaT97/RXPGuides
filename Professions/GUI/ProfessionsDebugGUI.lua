@@ -340,16 +340,20 @@ function addon.professions.GUI.createGUI()
                     maxSegment, RXPCData.professions.money
                 )
             end]]
+            profSession.doLogging = true
+            local timeSpent = debugprofilestop()
             local _, _, _,
             currentSkillLevel, skillLevelsGained,
             moneySpent, timeNeeded, sellValue,
-            _, _ = aProf.generatePath(RXPCData.professions.profession1.name, RXPCData.professions.profession1.skillLevel, 300, 10000000)
+            _, _ = aProf.generatePath(RXPCData.professions.profession1.name, RXPCData.professions.profession1.skillLevel, RXPCData.professions.segmentRange, RXPCData.professions.money)
             --recipeKnapsack, materialKnapsack, backpackKnapsack, skillLevelsGained, moneySpent, timeNeeded =
                 --aProf.gatherRecipesToBuyGreedy(
                 --    RXPCData.professions.profession1.name,
                 --    RXPCData.professions.profession1.skillLevel,
                 --    maxSegment, RXPCData.professions.money
                 --)
+            timeSpent = debugprofilestop() - timeSpent
+            print("DONE IN ", string.format("%.3f", timeSpent), "ms")
             --textToPrint = aProf.greedyToString(recipeKnapsack, materialKnapsack, backpackKnapsack, skillLevelsGained, moneySpent, timeNeeded)
             --professionName, skillLevelReached, skillLevelsGained, moneySpent, timeNeeded, sellValue
             textToPrint = aProf.pathToString(RXPCData.professions.profession1.name, currentSkillLevel, skillLevelsGained, moneySpent, timeNeeded, sellValue)
@@ -370,7 +374,7 @@ function addon.professions.GUI.createGUI()
     moneyEditBox:SetNumber(1000000)
     minimumPriceMethod:SetChecked(true)
     moneyGreedyMethod:SetChecked(true)
-    alchemyButton:SetChecked(true)
+    testButton:SetChecked(true)
     selectSkillLevelFrame:SetValue(1)
     selectSegmentFrame:SetValue(300)
 
