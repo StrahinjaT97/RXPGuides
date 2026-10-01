@@ -2,16 +2,6 @@ local addonName, addon = ...
 
 if not (addon.game == "CLASSIC" or addon.game == "TBC") then return end
 
--- Builds the text the player pastes into the Profession Route web page (/rxpprof export).
---
--- Format: schema version 2 as the web page (gold.dev.restedxp.com) validates it, read from its
--- client code on 2026-09-23:
---   schemaVersion = 2; realm, region, faction: strings;
---   character = { level, moneyCopper }: whole numbers >= 0;
---   professions = non-empty array of { skillLineId, skill, maxSkill };
---   auctionScan (optional) = { scannedAt: date string, items = array of { listings = array } }.
--- The page does not check what is inside a listing, nor any other field, so the listing shape
--- and the extra fields (knownRecipes, bags, game, ...) are still unconfirmed against the server.
 
 addon.professions = addon.professions or {}
 local export = {}
@@ -25,25 +15,19 @@ local fmt, byte, gsub, floor = string.format, string.byte, string.gsub, math.flo
 local GetItemCount = (_G.C_Item and _G.C_Item.GetItemCount) or _G.GetItemCount
 local GetMoney, GetRealmName, GetCurrentRegion, time, date = _G.GetMoney, _G.GetRealmName, _G.GetCurrentRegion, _G.time, _G.date
 
--- Blizzard skill line ids; the page names professions by these (it knows exactly this set).
 local SKILL_LINE_IDS = {
     alchemy = 171, blacksmithing = 164, enchanting = 333, engineering = 202, herbalism = 182,
     leatherworking = 165, mining = 186, skinning = 393, tailoring = 197, cooking = 185,
     firstaid = 129, fishing = 356,
 }
 
--- GetCurrentRegion() ids; the page shows the region upper-cased, the backend's v1 used lower case.
 local REGIONS = { [1] = "us", [2] = "kr", [3] = "eu", [4] = "tw", [5] = "cn" }
 
--- Lua has one table type, so arrays are marked explicitly; an unmarked empty table becomes {}.
 local ARRAY = {}
 local function array(t)
     return setmetatable(t or {}, ARRAY)
 end
 
----------------------------------------------------------------------------
--- JSON writer
----------------------------------------------------------------------------
 
 local ESCAPES = { ['"'] = '\\"', ['\\'] = '\\\\', ['\n'] = '\\n', ['\r'] = '\\r', ['\t'] = '\\t' }
 
@@ -77,7 +61,7 @@ local function encodeTable(t, out)
         return
     end
 
-    -- Sorted keys keep two exports of the same state byte-identical, which makes diffs readable.
+    -- Sorted keys keep two exports of the same state identical.
     local keys = {}
     for k in pairs(t) do
         keys[#keys + 1] = tostring(k)
@@ -119,9 +103,6 @@ function export.ToJSON(value)
     return tconcat(out)
 end
 
----------------------------------------------------------------------------
--- Data gathering (RXPGuides' own wrappers where they exist)
----------------------------------------------------------------------------
 
 local function liveProfessions()
     local skills = {}
@@ -137,7 +118,6 @@ local function liveProfessions()
     return skills
 end
 
--- Values set with /setp, /setf, /setm (or the debug window), stored by the prototype in RXPCData.professions.
 local function overrideProfessions()
     local skills = {}
     local data = RXPCData and RXPCData.professions or {}
@@ -167,7 +147,6 @@ end
 local function bagCounts()
     local counts = {}
     for _, itemId in ipairs(addon.professionSnapshotReagentIds or {}) do
-        -- Without the bank flag GetItemCount counts bags only, matching the backend's "bags only" rule.
         local count = GetItemCount(itemId)
         if count and count > 0 then
             counts[itemId] = count
@@ -192,9 +171,6 @@ local function professionList(skills)
     return list
 end
 
--- AH scan results: foundItems[itemId][unitPriceCopper] = quantity.
--- The running session wins; otherwise the copy saved by the last /export.
--- Returns nil without a scan, since the page treats a missing auctionScan as "no scan".
 local function auctionScan()
     local session = addon.professions.AH and addon.professions.AH.session
     local found, scannedAt = session and session.foundItems, session and session.scannedAt
@@ -215,7 +191,6 @@ local function auctionScan()
     end
     tsort(items, function(a, b) return a.itemId < b.itemId end)
 
-    -- Scans saved before scannedAt existed have no time; the export time stands in, so the page's
     -- age display is too young for those.
     return { scannedAt = isoTime(scannedAt or time()), items = items }
 end
@@ -230,7 +205,6 @@ local function buildPayload(opts)
     local money = GetMoney()
     if useOverrides then
         if data.faction then
-            -- The prototype stores lower case ("alliance"); the game uses "Alliance".
             faction = data.faction:sub(1, 1):upper() .. data.faction:sub(2)
         end
         money = data.money or money
@@ -238,7 +212,6 @@ local function buildPayload(opts)
     local now = time()
 
     return {
-        -- Checked by the page
         schemaVersion = SCHEMA_VERSION,
         realm = GetRealmName(),
         region = REGIONS[GetCurrentRegion()] or tostring(GetCurrentRegion()),
@@ -249,7 +222,7 @@ local function buildPayload(opts)
         },
         professions = professionList(skills),
         auctionScan = auctionScan(),
-        -- Not checked by the page; what the backend's v1 snapshot needed to plan
+
         game = addon.game,
         gameVersion = addon.gameVersion,
         season = addon.player.season,
@@ -264,15 +237,11 @@ end
 function export.BuildString(opts)
     local ok, result = pcall(buildPayload, opts)
     if not ok then
-        -- Travel with the paste like v1's exportError, so the failure is visible on the web side too.
         return export.ToJSON({ schemaVersion = SCHEMA_VERSION, exportError = tostring(result) }), result
     end
     return export.ToJSON(result)
 end
 
----------------------------------------------------------------------------
--- Copy window
----------------------------------------------------------------------------
 
 local exportWindow
 

@@ -49,7 +49,7 @@ function addon.professions.AH:Setup()
     if addon.game ~= "CLASSIC" and addon.game ~= "TBC" then return end
     if addon.professions.session.isInitialized then return end
 
-    --Set teh flag to check the players inventory for lingering intes
+    --Set the flag to check the players inventory for lingering items
     RXPCData.professions.isInitialScanned = false
 
     --Register events
@@ -57,6 +57,7 @@ function addon.professions.AH:Setup()
         self:RegisterEvent(event)
     end
 
+    self.session.isInitialized = true
 end
 
 function addon.professions.AH.session:Reset()
@@ -96,7 +97,6 @@ end
 
 
 function addon.professions.AH:gatherMaterialsToScan(professionName)
-    --Gathering professions (herbalism, mining, skinning) have no recipes in the DB
     if not PROFESSIONS[professionName] then return end
     --We create a local table first for easier lookup
     local lookup = {}
@@ -245,7 +245,6 @@ function addon.professions.AH:fullScan()
         return
     end
     self.session:Reset()
-    --The export reports how old the scan is
     self.session.scannedAt = time()
     addon.professions.AH:gatherMaterialsToScan(RXPCData.professions.profession1.name)
     if RXPCData.professions.profession2.name then
@@ -270,10 +269,9 @@ local debug = {}
 addon.professions.debug = debug
 
 function debug.IsAuctionHouseOpen()
-    return AuctionFrame ~= nil and AuctionFrame:IsShown()
+    return addon.professions.AH.session and addon.professions.AH.session.isInitialized and addon.professions.AH.session.ahIsShowing
 end
 
---Scan only runs with the AH open; with it closed, Scan would keep retrying every 0.35s.
 function debug.Scan()
     if not debug.IsAuctionHouseOpen() then print("Open the Auction House first") return end
     addon.professions.AH:fullScan()
@@ -418,5 +416,11 @@ SLASH_items1 = '/items'
 SlashCmdList['items'] = debug.ListScanItems
 
 --TODO: Debug only
+SLASH_df1 = '/df'
+SlashCmdList['df'] = debug.DetectFaction
+
+--TODO: Debug only
 SLASH_tt1 = '/tt'
-SlashCmdList['tt'] = debug.DetectFaction
+SlashCmdList['tt'] = function()
+    print(addon.professions.AH.session.ahIsShowing)
+end

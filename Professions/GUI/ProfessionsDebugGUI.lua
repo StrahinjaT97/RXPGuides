@@ -214,7 +214,7 @@ local function build()
     overrides:AddChild(faction)
     inputs.faction = faction
     button(overrides, "Set faction", function() debugAction("SetFaction", inputs.faction:GetValue()) end, 120, "/setf")
-    button(overrides, "Detect faction", function() debugAction("DetectFaction") end, 130, "/tt")
+    button(overrides, "Detect faction", function() debugAction("DetectFaction") end, 130, "/df")
 
     inputs.money = editBox(overrides, "Money (copper)", 140)
     button(overrides, "Set money", function() debugAction("SetMoney", inputs.money:GetText()) end, 120,
@@ -251,7 +251,7 @@ end
 
 function gui:Toggle()
     if window then
-        window:Hide() -- fires OnClose, which releases the window
+        window:Hide()
     else
         build()
     end
