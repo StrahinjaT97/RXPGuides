@@ -96,6 +96,8 @@ end
 
 
 function addon.professions.AH:gatherMaterialsToScan(professionName)
+    --Gathering professions (herbalism, mining, skinning) have no recipes in the DB
+    if not PROFESSIONS[professionName] then return end
     --We create a local table first for easier lookup
     local lookup = {}
     for recipeName, _ in pairs(PROFESSIONS[professionName].RECIPES) do
@@ -240,8 +242,11 @@ function addon.professions.AH:fullScan()
     gatherPlayerProfessionInfo()
     if not RXPCData.professions.profession1.name then
         print("No profession detected")
+        return
     end
     self.session:Reset()
+    --The export reports how old the scan is
+    self.session.scannedAt = time()
     addon.professions.AH:gatherMaterialsToScan(RXPCData.professions.profession1.name)
     if RXPCData.professions.profession2.name then
         addon.professions.AH:gatherMaterialsToScan(RXPCData.professions.profession2.name)
@@ -257,25 +262,34 @@ function addon.professions.AH:exportInfo()
     gatherPlayerFactionInfo()
     gatherPlayerMoneyInfo()
     RXPCData.professions.foundItems = self.session.foundItems
+    RXPCData.professions.scannedAt = self.session.scannedAt
 end
 
-SLASH_scan1 = '/scan'
-SlashCmdList['scan'] = function()
+--Debug actions, shared by the slash commands below and the debug window (GUI/ProfessionsDebugGUI.lua)
+local debug = {}
+addon.professions.debug = debug
+
+function debug.IsAuctionHouseOpen()
+    return AuctionFrame ~= nil and AuctionFrame:IsShown()
+end
+
+--Scan only runs with the AH open; with it closed, Scan would keep retrying every 0.35s.
+function debug.Scan()
+    if not debug.IsAuctionHouseOpen() then print("Open the Auction House first") return end
     addon.professions.AH:fullScan()
 end
 
-
-SLASH_export1 = '/export'
-SlashCmdList['export'] = function()
+function debug.Export()
     addon.professions.AH:exportInfo()
     print("export done")
 end
 
---TODO: Debug only
-SLASH_tscan1 = '/tscan'
-SlashCmdList['tscan'] = function()
+--Scans the materials of the professions set with SetProfessions instead of the character's own
+function debug.ScanOverride()
+    if not debug.IsAuctionHouseOpen() then print("Open the Auction House first") return end
     if not RXPCData.professions.profession1.name then return end
     addon.professions.AH.session:Reset()
+    addon.professions.AH.session.scannedAt = time()
     print("gathering first profession")
     addon.professions.AH:gatherMaterialsToScan(RXPCData.professions.profession1.name)
     if RXPCData.professions.profession2.name then
@@ -287,57 +301,41 @@ SlashCmdList['tscan'] = function()
     addon.professions.AH:Scan(addon.professions.AH.session.materialsToScan[addon.professions.AH.session.materialIndex])
 end
 
---TODO: Debug only
-SLASH_texport1 = '/texport'
-SlashCmdList['texport'] = function()
+function debug.ExportScanOnly()
     RXPCData.professions.foundItems = addon.professions.AH.session.foundItems
+    RXPCData.professions.scannedAt = addon.professions.AH.session.scannedAt
     print("test export done")
 end
 
-
---TODO: Debug only
-SLASH_setp1 = '/setp'
-SlashCmdList['setp'] = function(args)
-    local name1, skillLevel1, name2, skillLevel2 = split(" ", trim(args))
-
-    if not name1 or not skillLevel1 then print("no prof1 - done set") return end
-    RXPCData.professions.profession1.name = name1
+function debug.SetProfessions(name1, skillLevel1, name2, skillLevel2)
+    if not name1 or not tonumber(skillLevel1) then print("no prof1 - done set") return end
+    RXPCData.professions.profession1 = RXPCData.professions.profession1 or {}
+    RXPCData.professions.profession1.name = lower(name1)
     RXPCData.professions.profession1.skillLevel = tonumber(skillLevel1)
     RXPCData.professions.profession1.skillMaxLevel = 300
 
-    if not name2 or not skillLevel2 then print("no prof2 - done set") return end
-    RXPCData.professions.profession2.name = name2
+    if not name2 or not tonumber(skillLevel2) then print("no prof2 - done set") return end
+    RXPCData.professions.profession2 = RXPCData.professions.profession2 or {}
+    RXPCData.professions.profession2.name = lower(name2)
     RXPCData.professions.profession2.skillLevel = tonumber(skillLevel2)
     RXPCData.professions.profession2.skillMaxLevel = 300
 
     print("done set")
 end
 
---TODO: Debug only
-SLASH_setf1 = '/setf'
-SlashCmdList['setf'] = function(args)
-    local faction = split(" ", trim(args))
-
-    if not faction then return end
-    RXPCData.professions.faction = faction
-
+function debug.SetFaction(faction)
+    if not faction or faction == "" then return end
+    RXPCData.professions.faction = lower(faction)
     print("done set")
 end
 
---TODO: Debug only
-SLASH_setm1 = '/setm'
-SlashCmdList['setm'] = function(args)
-    local money = split(" ", trim(args))
-
-    if not money then return end
+function debug.SetMoney(money)
+    if not tonumber(money) then return end
     RXPCData.professions.money = tonumber(money)
-
     print("done set")
 end
 
---TODO: Debug only
-SLASH_pn1 = '/pn'
-SlashCmdList['pn'] = function()
+function debug.PrintData()
     for k, v in pairs(RXPCData.professions) do
         if type(v) == "table" then
             for kk, vv in pairs(v) do
@@ -351,9 +349,7 @@ SlashCmdList['pn'] = function()
     print("print done")
 end
 
---TODO: Debug only
-SLASH_rs1 = '/rs'
-SlashCmdList['rs'] = function()
+function debug.Reset()
     RXPCData.professions = {}
     RXPCData.professions.profession1 = {}
     RXPCData.professions.profession2 = {}
@@ -361,9 +357,7 @@ SlashCmdList['rs'] = function()
     print("reset done")
 end
 
---TODO: Debug only
-SLASH_items1 = '/items'
-SlashCmdList['items'] = function()
+function debug.ListScanItems()
     print("To scan:")
     for k, v in pairs(addon.professions.AH.session.materialsToScan) do
         print(tostring(k), " -> ", tostring(v))
@@ -372,12 +366,57 @@ SlashCmdList['items'] = function()
     print("list done")
 end
 
-
---TODO: Debug only
-SLASH_tt1 = '/tt'
-SlashCmdList['tt'] = function()
+function debug.DetectFaction()
     gatherPlayerFactionInfo()
     print("faction = ", RXPCData.professions.faction)
 
     print("test done")
 end
+
+SLASH_scan1 = '/scan'
+SlashCmdList['scan'] = debug.Scan
+
+SLASH_export1 = '/export'
+SlashCmdList['export'] = debug.Export
+
+--TODO: Debug only
+SLASH_tscan1 = '/tscan'
+SlashCmdList['tscan'] = debug.ScanOverride
+
+--TODO: Debug only
+SLASH_texport1 = '/texport'
+SlashCmdList['texport'] = debug.ExportScanOnly
+
+--TODO: Debug only
+SLASH_setp1 = '/setp'
+SlashCmdList['setp'] = function(args)
+    debug.SetProfessions(split(" ", trim(args)))
+end
+
+--TODO: Debug only
+SLASH_setf1 = '/setf'
+SlashCmdList['setf'] = function(args)
+    debug.SetFaction((split(" ", trim(args))))
+end
+
+--TODO: Debug only
+SLASH_setm1 = '/setm'
+SlashCmdList['setm'] = function(args)
+    debug.SetMoney((split(" ", trim(args))))
+end
+
+--TODO: Debug only
+SLASH_pn1 = '/pn'
+SlashCmdList['pn'] = debug.PrintData
+
+--TODO: Debug only
+SLASH_rs1 = '/rs'
+SlashCmdList['rs'] = debug.Reset
+
+--TODO: Debug only
+SLASH_items1 = '/items'
+SlashCmdList['items'] = debug.ListScanItems
+
+--TODO: Debug only
+SLASH_tt1 = '/tt'
+SlashCmdList['tt'] = debug.DetectFaction
