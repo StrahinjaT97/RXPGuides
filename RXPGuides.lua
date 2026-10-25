@@ -1500,6 +1500,9 @@ function addon:OnInitialize()
     RXPCData = RXPCData or {}
     RXPCData.exploredZones = RXPCData.exploredZones or {}
 
+    RXPCData.craftedItems = RXPCData.craftedItems or {}
+    RXPCData.professions = RXPCData.professions or {}
+
     local realm = _G.GetRealmName()
     RXPData.realmData = RXPData.realmData or {}
     local realmData = RXPData.realmData[realm] or {}
@@ -1751,6 +1754,7 @@ function addon:OnEnable()
     C_Timer.After(0.2, function()
         if addon.VendorTreasures then addon.VendorTreasures:Setup() end
         if addon.itemUpgrades then addon.itemUpgrades:Setup() end
+        if addon.professions then addon.professions:Setup() end
     end)
 
     if addon.player.level == 1 then

@@ -200,6 +200,31 @@ local function createAuctionHousePanelButton(parent, text)
     return button
 end
 
+local function createAuctionHouseRadioButton(parent, text)
+    local radioButton = CreateFrame("CheckButton", nil, parent, "UIRadioButtonTemplate")
+    radioButton:SetSize(20, 20)
+    local textFrame = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    textFrame:SetText(text)
+
+    textFrame:SetPoint("RIGHT", radioButton, "LEFT", -10, 0)
+
+    return radioButton, textFrame
+end
+
+local function groupRadioButtons(...)
+    local args = {...}
+    for _, radioButton in ipairs(args) do
+        if radioButton then
+            radioButton:SetScript("OnClick", function(this)
+                for _, otherRadioButton in ipairs(args) do
+                    otherRadioButton:SetChecked(false)
+                end
+                this:SetChecked(true)
+            end)
+        end
+    end
+end
+
 function addon.ui.v2:RegisterRXPV2AuctionHouseItemBlock()
     local Type, Version = "RXPV2AuctionHouseItemBlock", 1
     if not AceGUI or (AceGUI:GetWidgetVersion(Type) or 0) >= Version then return end
@@ -360,6 +385,39 @@ function addon.ui.v2:RegisterRXPV2AuctionHouse()
 
         local searchButton = createAuctionHousePanelButton(frame, _G.SEARCH)
         searchButton:SetPoint("RIGHT", buyButton, "LEFT")
+
+        local exportButton = createAuctionHousePanelButton(frame, "Export")
+        exportButton:SetPoint("RIGHT", searchButton, "LEFT")
+
+        exportButton:SetScript("OnClick", function ()
+            addon.professions.AH:exportInfo()
+        end)
+
+        local scanButton = createAuctionHousePanelButton(frame, "Scan")
+        scanButton:SetPoint("RIGHT", exportButton, "LEFT")
+
+        local professionButton1,  professionButton2, professionText2
+        if RXPCData.professions.profession1 then
+            professionButton1, _ = createAuctionHouseRadioButton(frame, RXPCData.professions.profession1.name)
+            professionButton1:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
+        end
+        if RXPCData.professions.profession1 and RXPCData.professions.profession2 then
+            professionButton2, professionText2 = createAuctionHouseRadioButton(frame, RXPCData.professions.profession2.name)
+            professionButton2:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
+            professionButton1:SetPoint("RIGHT", professionText2, "LEFT", -10, 0)
+        end
+        groupRadioButtons(professionButton1, professionButton2)
+
+        scanButton:SetScript("OnClick", function (this)
+            if not addon.professions then addon.professions = {} end
+
+            local options = (professionButton1:IsEnabled() and professionButton2:IsEnabled() and 3) or
+                      (professionButton1:IsEnabled() and 1) or
+                      (professionButton2:IsEnabled() and 2) or
+                      0
+            addon.professions.AH:fullScan(options)
+        end)
+
 
         frame.searchButton = searchButton
         frame.buyButton = buyButton
