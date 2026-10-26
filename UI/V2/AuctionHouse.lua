@@ -406,7 +406,6 @@ function addon.ui.v2:RegisterRXPV2AuctionHouse()
             professionButton2:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
             professionButton1:SetPoint("RIGHT", professionText2, "LEFT", -10, 0)
         end
-        groupRadioButtons(professionButton1, professionButton2)
 
         scanButton:SetScript("OnClick", function (this)
             if not addon.professions then addon.professions = {} end
