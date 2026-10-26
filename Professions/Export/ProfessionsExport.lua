@@ -118,7 +118,7 @@ end
 local function professionsList()
     local list = array()
     local prof
-    if RXPCData.professions.profession1 and RXPCData.professions.profession1.skillLineId then
+    if RXPCData.professions.profession1 and (RXPCData.professions.profession1.skillLineId or 0) > 0 then
         prof = RXPCData.professions.profession1
         list[#list+1] = {
             skillLineId = prof.skillLineId,
@@ -126,7 +126,7 @@ local function professionsList()
             maxSkill = prof.skillMaxLevel
         }
     end
-    if RXPCData.professions.profession2 and RXPCData.professions.profession2.skillLineId then
+    if RXPCData.professions.profession2 and (RXPCData.professions.profession2.skillLineId or 0) > 0 then
         prof = RXPCData.professions.profession2
         list[#list+1] = {
             skillLineId = prof.skillLineId,

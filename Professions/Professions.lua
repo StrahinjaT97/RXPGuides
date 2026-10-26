@@ -44,9 +44,9 @@ function addon.professions:CHAT_MSG_SKILL(_, text)
 
     local newSkillLevel = tonumber(match(text, "%d+"))
     local prof1Name, prof2Name = RXPCData.professions.profession1.name, RXPCData.professions.profession2.name
-    if find(lower(text), prof1Name) then
+    if prof1Name ~= "" and find(lower(text), prof1Name, 1, true) then
         RXPCData.professions.profession1.skillLevel = newSkillLevel
-    elseif find(lower(text), prof2Name) then
+    elseif prof2Name ~= "" and find(lower(text), prof2Name, 1 , true) then
         RXPCData.professions.profession2.skillLevel = newSkillLevel
     end
 end
