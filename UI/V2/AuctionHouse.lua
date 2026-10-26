@@ -410,9 +410,9 @@ function addon.ui.v2:RegisterRXPV2AuctionHouse()
         scanButton:SetScript("OnClick", function (this)
             if not addon.professions then addon.professions = {} end
 
-            local options = (professionButton1:IsEnabled() and professionButton2:IsEnabled() and 3) or
-                      (professionButton1:IsEnabled() and 1) or
-                      (professionButton2:IsEnabled() and 2) or
+            local options = (professionButton1:GetChecked() and professionButton2:GetChecked() and 3) or
+                      (professionButton1:GetChecked() and 1) or
+                      (professionButton2:GetChecked() and 2) or
                       0
             addon.professions.AH:fullScan(options)
         end)

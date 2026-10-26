@@ -239,6 +239,7 @@ local function gatherPlayerProfessionInfo()
             specializationOffset, skillLineName = GetProfessionInfo(prof2Index)
             RXPCData.professions.profession2 = {
                 name = name,
+                skillLineId = skillLine,
                 skillLevel = skillLevel,
                 skillMaxLevel = maxSkillLevel
             }
