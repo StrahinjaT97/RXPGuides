@@ -397,11 +397,12 @@ function addon.ui.v2:RegisterRXPV2AuctionHouse()
         scanButton:SetPoint("RIGHT", exportButton, "LEFT")
 
         local professionButton1,  professionButton2, professionText2
-        if RXPCData.professions.profession1 then
+        if RXPCData.professions.profession1 and RXPCData.professions.profession1.skillLineId ~= 0 then
             professionButton1, _ = createAuctionHouseRadioButton(frame, RXPCData.professions.profession1.name)
             professionButton1:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
         end
-        if RXPCData.professions.profession1 and RXPCData.professions.profession2 then
+        if RXPCData.professions.profession1 and RXPCData.professions.profession2 and
+           RXPCData.professions.profession1.skillLineId ~= 0 and RXPCData.professions.profession2.skillLineId ~= 0 then
             professionButton2, professionText2 = createAuctionHouseRadioButton(frame, RXPCData.professions.profession2.name)
             professionButton2:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
             professionButton1:SetPoint("RIGHT", professionText2, "LEFT", -10, 0)
