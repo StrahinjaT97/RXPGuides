@@ -192,6 +192,7 @@ function addon.professions.export.ExportJSONData()
         bags = RXPCData.craftedItems,
         debugOverrides = useOverrides and true or false,
     }
+    if table.game == "TBC" then table.game = "CLASSIC" end
     return addon.professions.export.ToJSON(table)
 end
 
