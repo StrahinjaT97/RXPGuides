@@ -200,8 +200,8 @@ local function createAuctionHousePanelButton(parent, text)
     return button
 end
 
-local function createAuctionHouseRadioButton(parent, text)
-    local radioButton = CreateFrame("CheckButton", nil, parent, "UIRadioButtonTemplate")
+local function createAuctionHouseCheckButton(parent, text)
+    local radioButton = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
     radioButton:SetSize(20, 20)
     local textFrame = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     textFrame:SetText(text)
@@ -209,20 +209,6 @@ local function createAuctionHouseRadioButton(parent, text)
     textFrame:SetPoint("RIGHT", radioButton, "LEFT", -10, 0)
 
     return radioButton, textFrame
-end
-
-local function groupRadioButtons(...)
-    local args = {...}
-    for _, radioButton in ipairs(args) do
-        if radioButton then
-            radioButton:SetScript("OnClick", function(this)
-                for _, otherRadioButton in ipairs(args) do
-                    otherRadioButton:SetChecked(false)
-                end
-                this:SetChecked(true)
-            end)
-        end
-    end
 end
 
 function addon.ui.v2:RegisterRXPV2AuctionHouseItemBlock()
@@ -398,12 +384,12 @@ function addon.ui.v2:RegisterRXPV2AuctionHouse()
 
         local professionButton1,  professionButton2, professionText2
         if RXPCData.professions.profession1 and RXPCData.professions.profession1.skillLineId ~= 0 then
-            professionButton1, _ = createAuctionHouseRadioButton(frame, RXPCData.professions.profession1.name)
+            professionButton1, _ = createAuctionHouseCheckButton(frame, RXPCData.professions.profession1.name)
             professionButton1:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
         end
         if RXPCData.professions.profession1 and RXPCData.professions.profession2 and
            RXPCData.professions.profession1.skillLineId ~= 0 and RXPCData.professions.profession2.skillLineId ~= 0 then
-            professionButton2, professionText2 = createAuctionHouseRadioButton(frame, RXPCData.professions.profession2.name)
+            professionButton2, professionText2 = createAuctionHouseCheckButton(frame, RXPCData.professions.profession2.name)
             professionButton2:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
             professionButton1:SetPoint("RIGHT", professionText2, "LEFT", -10, 0)
         end
