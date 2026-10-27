@@ -10,6 +10,7 @@ local _G = _G
 local pairs, ipairs, type, tostring, tsort, tconcat = pairs, ipairs, type, tostring, table.sort, table.concat
 local fmt, byte, gsub, floor = string.format, string.byte, string.gsub, math.floor
 local GetMoney, GetRealmName, GetCurrentRegion, time, date = _G.GetMoney, _G.GetRealmName, _G.GetCurrentRegion, _G.time, _G.date
+local UnitName, UnitClass = _G.UnitName, _G.UnitClass
 
 
 -- Local enums
@@ -176,6 +177,8 @@ function addon.professions.export.ExportJSONData()
         region = REGIONS[GetCurrentRegion()] or tostring(GetCurrentRegion()),
         faction = faction,
         character = {
+            name = UnitName("player"),
+            class = select(2, UnitClass("player")),
             level = addon.player.level,
             moneyCopper = money,
             overtimeLevel = overtimeLevel,
