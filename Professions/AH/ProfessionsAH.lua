@@ -9,6 +9,8 @@ addon.professions.PROFESSIONS = addon.professions.PROFESSIONS or {}
 addon.professions.locale = addon.professions.locale or {}
 addon.professions.export = addon.professions.export or {}
 
+addon.itemUpgrades = addon.itemUpgrades or {}
+
 -- Localize globals
 local _G = _G
 local pairs, ipairs = pairs, ipairs
@@ -447,6 +449,16 @@ function addon.professions.AH:AUCTION_ITEM_LIST_UPDATE()
         self.session.sentQuery = false
         self.session.currentPage = 0
         self.session.materialIndex = self.session.materialIndex + 1
+
+        --Updated title
+        local percentage = addon.Round(self.session.materialIndex / #self.session.materialsToScan, 2) * 100
+        percentage = math.floor(math.min(percentage, 100) + 0.5)
+        addon.itemUpgrades.title.Title:SetText(string.format("%s / %s items scanned (%d%%)", self.session.materialIndex,
+                                                #self.session.materialsToScan, percentage))
+        if (self.session.materialIndex == #self.session.materialsToScan) then
+            addon.itemUpgrades.title.Title:SetText("Done scanning")
+        end
+
         if self.session.materialIndex <= #self.session.materialsToScan then
             classicScan(self.session.materialsToScan[self.session.materialIndex])
         end

@@ -2153,6 +2153,7 @@ function addon.itemUpgrades.AH:CreateEmbeddedGui()
 
     addon.ui.v2:InitializeAuctionHouse()
     ahSession.displayFrame = addon.ui.v2:CreateAuctionHouse(auctionHouseHandlers).frame
+    addon.itemUpgrades.title = ahSession.displayFrame
 
     if not ahSession.displayFrame then return end
 
