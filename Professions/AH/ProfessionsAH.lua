@@ -15,6 +15,7 @@ addon.itemUpgrades = addon.itemUpgrades or {}
 local _G = _G
 local pairs, ipairs = pairs, ipairs
 local lower, split, trim = string.lower, string.split, string.trim
+local band = bit.band
 local CanSendAuctionQuery, QueryAuctionItems = _G.CanSendAuctionQuery, _G.QueryAuctionItems
 local GetNumAuctionItems, GetAuctionItemLink, GetAuctionItemInfo = _G.GetNumAuctionItems, _G.GetAuctionItemLink, _G.GetAuctionItemInfo
 local GetContainerNumSlots, GetContainerItemInfo = _G.C_Container.GetContainerNumSlots, _G.C_Container.GetContainerItemInfo
@@ -537,25 +538,26 @@ function addon.professions.AH:COMMODITY_SEARCH_RESULTS_UPDATED(_, itemID)
     end
 end
 
---Scan options:
---0: none
---1: only first profession
---2: only second profession
---3: both professions
-function addon.professions.AH:fullScan(options)
-    options = options or 0
-    if options == 0 then return end
+--[[
+Scan flags:
+0 (0x0): Scan NONE
+1 (0x1): Scan the first profession
+2 (0x2): Scan the second profession
+]]
+function addon.professions.AH:fullScan(flags)
+    flags = flags or 0
+    if flags == 0 then return end
 
     if not RXPCData.professions.profession1.name then
         return
     end
     self.session:Reset()
     self.session.scannedAt = time()
-    if options == 1 or options == 3 then
+    if band(flags, 0x1) ~= 0 then
         addon.professions.AH:gatherMaterialsToScan(RXPCData.professions.profession1.name)
     end
     if RXPCData.professions.profession2.name then
-        if options == 2 or options == 3 then
+        if band(flags, 0x2) ~= 0 then
             addon.professions.AH:gatherMaterialsToScan(RXPCData.professions.profession2.name)
         end
     end
