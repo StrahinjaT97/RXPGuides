@@ -14,7 +14,8 @@ addon.itemUpgrades = addon.itemUpgrades or {}
 -- Localize globals
 local _G = _G
 local pairs, ipairs = pairs, ipairs
-local lower, split, trim = string.lower, string.split, string.trim
+local lower, split, trim, fmt = string.lower, string.split, string.trim, string.format
+local min, floor = math.min, math.floor
 local band = bit.band
 local CanSendAuctionQuery, QueryAuctionItems = _G.CanSendAuctionQuery, _G.QueryAuctionItems
 local GetNumAuctionItems, GetAuctionItemLink, GetAuctionItemInfo = _G.GetNumAuctionItems, _G.GetAuctionItemLink, _G.GetAuctionItemInfo
@@ -350,6 +351,17 @@ local function gatherPlayerKnownRecipes()
     end
 end
 
+--Updates the tile of the AH card with current progress
+local function updateTitleProgress()
+    local percentage = addon.Round(addon.professions.AH.session.materialIndex / #addon.professions.AH.session.materialsToScan, 2) * 100
+    percentage = floor(min(percentage, 100) + 0.5)
+    addon.itemUpgrades.title.Title:SetText(fmt("%s / %s items scanned (%d%%)", addon.professions.AH.session.materialIndex,
+                                            #addon.professions.AH.session.materialsToScan, percentage))
+    if (addon.professions.AH.session.materialIndex >= #addon.professions.AH.session.materialsToScan) then
+        addon.itemUpgrades.title.Title:SetText("Done scanning")
+    end
+end
+
 
 --Scan functions
 
@@ -450,15 +462,7 @@ function addon.professions.AH:AUCTION_ITEM_LIST_UPDATE()
         self.session.sentQuery = false
         self.session.currentPage = 0
         self.session.materialIndex = self.session.materialIndex + 1
-
-        --Updated title
-        local percentage = addon.Round(self.session.materialIndex / #self.session.materialsToScan, 2) * 100
-        percentage = math.floor(math.min(percentage, 100) + 0.5)
-        addon.itemUpgrades.title.Title:SetText(string.format("%s / %s items scanned (%d%%)", self.session.materialIndex,
-                                                #self.session.materialsToScan, percentage))
-        if (self.session.materialIndex == #self.session.materialsToScan) then
-            addon.itemUpgrades.title.Title:SetText("Done scanning")
-        end
+        updateTitleProgress()
 
         if self.session.materialIndex <= #self.session.materialsToScan then
             classicScan(self.session.materialsToScan[self.session.materialIndex])
@@ -508,6 +512,7 @@ function addon.professions.AH:ITEM_SEARCH_RESULTS_UPDATED(_, itemKey, _)
 
     self.session.sentQuery = false
     self.session.materialIndex = self.session.materialIndex + 1
+    updateTitleProgress()
     if self.session.materialIndex <= #self.session.materialsToScan then
         foreverScan(self.session.materialsToScan[self.session.materialIndex])
     end
@@ -533,6 +538,7 @@ function addon.professions.AH:COMMODITY_SEARCH_RESULTS_UPDATED(_, itemID)
 
     self.session.sentQuery = false
     self.session.materialIndex = self.session.materialIndex + 1
+    updateTitleProgress()
     if self.session.materialIndex <= #self.session.materialsToScan then
         foreverScan(self.session.materialsToScan[self.session.materialIndex])
     end
