@@ -5,6 +5,7 @@ if not (addon.game == "CLASSIC" or addon.game == "TBC" or addon.game == "FOREVER
 addon.professions = addon.professions or {}
 addon.professions.materialIds = addon.professions.materialIds or {}
 addon.professions.recipeIds = addon.professions.recipeIds or {}
+addon.professions.tradeableRecipeIds = addon.professions.tradeableRecipeIds or {}
 addon.professions.PROFESSIONS = addon.professions.PROFESSIONS or {}
 addon.professions.locale = addon.professions.locale or {}
 addon.professions.export = addon.professions.export or {}
@@ -44,6 +45,7 @@ local GetConfigIDBySystemID, GetNodeInfo, ConfigHasStagedChanges, GetStagedChang
 -- Local renaming
 local RECIPES = addon.professions.recipeIds
 local MATERIALS = addon.professions.materialIds
+local TRADEABLE_RECIPES = addon.professions.tradeableRecipeIds
 local PROFESSION_NAMES = addon.professions.locale.PROFESSION_NAMES
 
 -- Local enums
@@ -173,6 +175,19 @@ local function initialScanInventoryForCraftedItems(prof1Name, prof2Name)
     end
 end
 
+function addon.professions.AH:gatherTradeableRecipesToScan(professionName)
+    if addon.professions.session.isClassic then
+        if not TRADEABLE_RECIPES.classic[professionName] then return end
+        for tradeableRecipeId, _ in pairs(TRADEABLE_RECIPES.classic[professionName]) do
+            tinsert(self.session.materialsToScan, tradeableRecipeId)
+        end
+    else
+        if not TRADEABLE_RECIPES.forever[professionName] then return end
+        for tradeableRecipeId, _ in pairs(TRADEABLE_RECIPES.forever[professionName]) do
+            tinsert(self.session.materialsToScan, tradeableRecipeId)
+        end
+    end
+end
 
 function addon.professions.AH:gatherMaterialsToScan(professionName)
     if addon.professions.session.isClassic then
@@ -186,6 +201,7 @@ function addon.professions.AH:gatherMaterialsToScan(professionName)
             tinsert(self.session.materialsToScan, materialId)
         end
     end
+    self:gatherTradeableRecipesToScan(professionName)
 end
 
 -- Player info gathering functions
