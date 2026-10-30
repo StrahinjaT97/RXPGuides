@@ -371,10 +371,10 @@ end
 local function updateTitleProgress()
     local percentage = addon.Round(addon.professions.AH.session.materialIndex / #addon.professions.AH.session.materialsToScan, 2) * 100
     percentage = floor(min(percentage, 100) + 0.5)
-    addon.itemUpgrades.title.Title:SetText(fmt("%s / %s items scanned (%d%%)", addon.professions.AH.session.materialIndex,
+    addon.itemUpgrades.displayFrame.Title:SetText(fmt("%s / %s items scanned (%d%%)", addon.professions.AH.session.materialIndex,
                                             #addon.professions.AH.session.materialsToScan, percentage))
     if (addon.professions.AH.session.materialIndex >= #addon.professions.AH.session.materialsToScan) then
-        addon.itemUpgrades.title.Title:SetText("Done scanning")
+        addon.itemUpgrades.displayFrame.Title:SetText("Done scanning")
     end
 end
 
