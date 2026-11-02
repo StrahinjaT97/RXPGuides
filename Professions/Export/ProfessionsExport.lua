@@ -179,6 +179,7 @@ function addon.professions.export.ExportJSONData()
         character = {
             name = UnitName("player"),
             class = select(2, UnitClass("player")),
+            race = select(2, UnitRace("player")),
             level = addon.player.level,
             moneyCopper = money,
             overtimeLevel = overtimeLevel,
