@@ -105,5 +105,6 @@ function addon.professions:Setup()
     RXPCData.professions.isInitialScanned = RXPCData.professions.isInitialScanned or false
     setUpRXPCData()
     self.AH:Setup()
+    self.gui:Setup()
     self.session.isInitialized = true
 end

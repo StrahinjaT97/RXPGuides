@@ -9,6 +9,7 @@ addon.professions.tradeableRecipeIds = addon.professions.tradeableRecipeIds or {
 addon.professions.PROFESSIONS = addon.professions.PROFESSIONS or {}
 addon.professions.locale = addon.professions.locale or {}
 addon.professions.export = addon.professions.export or {}
+addon.professions.gui = addon.professions.gui or {}
 
 addon.itemUpgrades = addon.itemUpgrades or {}
 
@@ -452,6 +453,10 @@ function addon.professions.AH:AUCTION_HOUSE_SHOW()
         RXPCData.professions.isInitialScanned = true
     end
     gatherPlayerProfessionInfo()
+    if not addon.professions.gui.session.isGuiCreated then
+        addon.professions.gui:CreateEmbeddedGui()
+        addon.professions.gui.session.isGuiCreated = true
+    end
 end
 
 
