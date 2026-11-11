@@ -374,10 +374,18 @@ end
 local function updateTitleProgress()
     local percentage = addon.Round(addon.professions.AH.session.materialIndex / #addon.professions.AH.session.materialsToScan, 2) * 100
     percentage = floor(min(percentage, 100) + 0.5)
-    addon.professions.gui.auctionHouse.frame.Title:SetText(fmt("%s / %s items scanned (%d%%)", addon.professions.AH.session.materialIndex,
-                                            #addon.professions.AH.session.materialsToScan, percentage))
-    if (addon.professions.AH.session.materialIndex >= #addon.professions.AH.session.materialsToScan) then
-        addon.professions.gui.auctionHouse.frame.Title:SetText("Done scanning")
+    if addon.professions.session.isClassic then
+        addon.professions.gui.auctionHouse.frame.Title:SetText(fmt("%s / %s items scanned (%d%%)", addon.professions.AH.session.materialIndex,
+                                                #addon.professions.AH.session.materialsToScan, percentage))
+        if addon.professions.AH.session.materialIndex >= #addon.professions.AH.session.materialsToScan then
+            addon.professions.gui.auctionHouse.frame.Title:SetText("Done scanning")
+        end
+    else
+        addon.professions.gui.auctionHouse.frame:GetParent():SetTitle(fmt("%s / %s items scanned (%d%%)", addon.professions.AH.session.materialIndex,
+                                                #addon.professions.AH.session.materialsToScan, percentage))
+        if addon.professions.AH.session.materialIndex >= #addon.professions.AH.session.materialsToScan then
+            addon.professions.gui.auctionHouse.frame:GetParent():SetTitle("Done scanning")
+        end
     end
 end
 
@@ -456,7 +464,7 @@ function addon.professions.AH:AUCTION_HOUSE_SHOW()
     end
     gatherPlayerProfessionInfo()
     if not addon.professions.gui.session.isGuiCreated then
-        addon.professions.gui:CreateEmbeddedGui()
+        addon.professions.gui:CreateGui()
         addon.professions.gui.session.isGuiCreated = true
     end
 end
@@ -464,6 +472,7 @@ end
 
 function addon.professions.AH:AUCTION_HOUSE_CLOSED()
     self.session.ahIsShowing = false
+    addon.professions.gui:Reset()
 end
 
 
@@ -592,7 +601,11 @@ function addon.professions.AH:fullScan(flags)
     end
 
     addon.professions.AH.session.materialIndex = 1
-    addon.professions.gui.auctionHouse.frame.Title:SetText("Starting scan ...")
+    if addon.professions.session.isClassic then
+        addon.professions.gui.auctionHouse.frame.Title:SetText("Starting scan ...")
+    else
+        addon.professions.gui.auctionHouse.frame:GetParent():SetTitle("Starting scan ...")
+    end
     addon.professions.AH:Scan()
 end
 

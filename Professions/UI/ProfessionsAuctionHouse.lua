@@ -8,20 +8,20 @@ addon.professions.gui = {}
 
 -- Localize globlas
 local _G = _G
-local len, fmt, lower, find, match, gmatch = string.len, string.format, string.lower, string.find, string.match, string.gmatch
-local tcount, tinsert, twipe, tsort, tremove, tconcat = table.count, table.insert, table.wipe, table.sort, table.remove, table.concat
 local pairs, ipairs, next, type, tostring, tonumber, error, unpack = pairs, ipairs, next, type, tostring, tonumber, error, unpack
-local max, min, abs, floor, ceil, huge, log = math.max, math.min, math.abs, math.floor, math.ceil, math.huge, math.log
 
+-- Local renaming
 local CreateFrame, UIParent = CreateFrame, UIParent
 local AceGUI = LibStub("AceGUI-3.0")
+local LibAHTab = LibStub("LibAHTab-1-0")
+
+-- Local enums
+local TAB_ID = "RXP_PROFESSIONS_TAB"
 
 addon.professions.gui.session = {
     isInitialized = false,
     isGuiCreated = false,
     isAhOpen = false,
-
-    guiFrame = {}
 }
 
 function addon.professions.gui:Setup()
@@ -63,7 +63,8 @@ local function createAuctionHouseCheckButton(parent, text)
     return checkButton, textFrame
 end
 
-function addon.professions.gui:RegisterProfessionsAuctionHouse()
+local function RegisterProfessionsAuctionHouse()
+    local self = addon.professions.gui
     local Type, Version = "RXPProfessionsAuctionHouse", 1
     if not AceGUI or (AceGUI:GetWidgetVersion(Type) or 0) >= Version then return end
 
@@ -136,14 +137,15 @@ function addon.professions.gui:RegisterProfessionsAuctionHouse()
     AceGUI:RegisterWidgetType(Type, Constructor, Version)
 end
 
-function addon.professions.gui:CreateEmbeddedGui()
+local function CreateClassicGui()
+    local self = addon.professions.gui
     if self.session.isGuiCreated then return end
 
     local attachment = _G.AuctionFrame
     if not attachment then return end
 
 
-    self:RegisterProfessionsAuctionHouse()
+    RegisterProfessionsAuctionHouse()
 
     if not self.auctionHouse then
         self.auctionHouse = AceGUI:Create("RXPProfessionsAuctionHouse")
@@ -199,4 +201,78 @@ function addon.professions.gui:CreateEmbeddedGui()
     PanelTemplates_EnableTab(attachment, index)
 
     self.session.isGuiCreated = true
+end
+
+local function CreateModernEmbeddedGui()
+    local self = addon.professions.gui
+    if self.session.isGuiCreated then return end
+
+    local attachment = _G.AuctionHouseFrame
+    if not attachment then return end
+
+    if LibAHTab:DoesIDExist(TAB_ID) then
+        return
+    end
+
+    local frame = CreateFrame("Frame", nil, attachment)
+
+    frame:SetPoint("TOPLEFT", attachment, "TOPLEFT", 0, -90)
+    frame:SetPoint("BOTTOMRIGHT", attachment, "BOTTOMRIGHT", 0, 40)
+
+    local closeButton = createAuctionHousePanelButton(frame, _G.CLOSE)
+    closeButton:SetPoint("BOTTOMRIGHT", -6, -34)
+    closeButton:SetScript("OnClick", function(this) HideUIPanel(this:GetParent():GetParent()) end)
+
+    local exportButton = createAuctionHousePanelButton(frame, _G.EXPORT or "Export")
+    exportButton:SetPoint("RIGHT", closeButton, "LEFT")
+
+    exportButton:SetScript("OnClick", function ()
+        addon.professions.AH:exportInfo()
+    end)
+
+    local scanButton = createAuctionHousePanelButton(frame, _G.SCAN or "Scan")
+    scanButton:SetPoint("RIGHT", exportButton, "LEFT")
+
+    local professionButton1,  professionButton2, professionText2
+    if RXPCData.professions.profession1 and RXPCData.professions.profession1.skillLineId ~= 0 then
+        professionButton1, _ = createAuctionHouseCheckButton(frame, RXPCData.professions.profession1.name)
+        professionButton1:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
+    end
+    if RXPCData.professions.profession1 and RXPCData.professions.profession2 and
+        RXPCData.professions.profession1.skillLineId ~= 0 and RXPCData.professions.profession2.skillLineId ~= 0 then
+        professionButton2, professionText2 = createAuctionHouseCheckButton(frame, RXPCData.professions.profession2.name)
+        professionButton2:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
+        professionButton1:SetPoint("RIGHT", professionText2, "LEFT", -10, 0)
+    end
+
+    scanButton:SetScript("OnClick", function (this)
+        local flags = (professionButton1 and professionButton2 and professionButton1:GetChecked()
+                    and professionButton2:GetChecked() and 3) or
+                    (professionButton1 and professionButton1:GetChecked() and 1) or
+                    (professionButton2 and professionButton2:GetChecked() and 2) or
+                    0
+        addon.professions.AH:fullScan(flags)
+    end)
+
+    frame.closeButton = closeButton
+    frame.exportButton = exportButton
+    frame.scanButton = scanButton
+    frame.professionButton1 = professionButton1
+    frame.professionButton2 = professionButton2
+
+
+    self.auctionHouse = self.auctionHouse or {}
+    self.auctionHouse.frame = frame
+
+    LibAHTab:CreateTab(TAB_ID, frame, "RXP Professions")
+
+    self.session.isGuiCreated = true
+end
+
+function addon.professions.gui:CreateGui()
+    if addon.professions.session.isClassic then
+        CreateClassicGui()
+    else
+        CreateModernEmbeddedGui()
+    end
 end

@@ -21,4 +21,5 @@
   <Script file="LibDataBroker-1.1\LibDataBroker-1.1.lua"/>
   <Include file="LibDBIcon-1.0\lib.xml"/>
   <Include file="mainline\LibUIDropDownMenu\LibUIDropDownMenu.xml"/>
+  <Include file="LibAHTab-1-0\LibAHTab.xml"/>
 </Ui>
