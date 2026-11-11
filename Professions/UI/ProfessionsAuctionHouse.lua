@@ -203,7 +203,7 @@ local function CreateClassicGui()
     self.session.isGuiCreated = true
 end
 
-local function CreateModernEmbeddedGui()
+local function CreateModernGui()
     local self = addon.professions.gui
     if self.session.isGuiCreated then return end
 
@@ -273,6 +273,6 @@ function addon.professions.gui:CreateGui()
     if addon.professions.session.isClassic then
         CreateClassicGui()
     else
-        CreateModernEmbeddedGui()
+        CreateModernGui()
     end
 end
