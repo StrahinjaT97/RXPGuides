@@ -11,7 +11,6 @@ addon.professions.locale = addon.professions.locale or {}
 addon.professions.export = addon.professions.export or {}
 addon.professions.gui = addon.professions.gui or {}
 
-addon.itemUpgrades = addon.itemUpgrades or {}
 
 -- Localize globals
 local _G = _G
@@ -375,10 +374,10 @@ end
 local function updateTitleProgress()
     local percentage = addon.Round(addon.professions.AH.session.materialIndex / #addon.professions.AH.session.materialsToScan, 2) * 100
     percentage = floor(min(percentage, 100) + 0.5)
-    addon.itemUpgrades.displayFrame.Title:SetText(fmt("%s / %s items scanned (%d%%)", addon.professions.AH.session.materialIndex,
+    addon.professions.gui.auctionHouse.frame.Title:SetText(fmt("%s / %s items scanned (%d%%)", addon.professions.AH.session.materialIndex,
                                             #addon.professions.AH.session.materialsToScan, percentage))
     if (addon.professions.AH.session.materialIndex >= #addon.professions.AH.session.materialsToScan) then
-        addon.itemUpgrades.displayFrame.Title:SetText("Done scanning")
+        addon.professions.gui.auctionHouse.frame.Title:SetText("Done scanning")
     end
 end
 
@@ -593,6 +592,7 @@ function addon.professions.AH:fullScan(flags)
     end
 
     addon.professions.AH.session.materialIndex = 1
+    addon.professions.gui.auctionHouse.frame.Title:SetText("Starting scan ...")
     addon.professions.AH:Scan()
 end
 

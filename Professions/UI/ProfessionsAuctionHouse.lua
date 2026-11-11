@@ -53,14 +53,14 @@ local function createAuctionHousePanelButton(parent, text)
 end
 
 local function createAuctionHouseCheckButton(parent, text)
-    local radioButton = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
-    radioButton:SetSize(20, 20)
+    local checkButton = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+    checkButton:SetSize(20, 20)
     local textFrame = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     textFrame:SetText(text)
 
-    textFrame:SetPoint("RIGHT", radioButton, "LEFT", -10, 0)
+    textFrame:SetPoint("RIGHT", checkButton, "LEFT", -10, 0)
 
-    return radioButton, textFrame
+    return checkButton, textFrame
 end
 
 function addon.professions.gui:RegisterProfessionsAuctionHouse()
@@ -154,11 +154,12 @@ function addon.professions.gui:CreateEmbeddedGui()
     self.auctionHouse.frame:SetPoint("TOPLEFT", attachment, "TOPLEFT")
     self.auctionHouse.frame:SetPoint("BOTTOMRIGHT", attachment, "BOTTOMRIGHT")
 
-    self.auctionHouse.frame.Title:SetText("Hello")
+    self.auctionHouse.frame.Title:SetText("RXP Professions")
 
     local index = attachment.numTabs + 1
     local tabButton = CreateFrame("Button", "AuctionFrameTab" .. index, attachment, "AuctionTabTemplate")
 
+    tabButton.isRXPProfessions = true
     tabButton:SetText("RXP Professions")
     tabButton:SetID(index)
     tabButton:SetPoint("TOPLEFT", "AuctionFrameTab" .. (index - 1), "TOPRIGHT", -8, 0)
@@ -166,6 +167,13 @@ function addon.professions.gui:CreateEmbeddedGui()
 
     tabButton.Selected = function (this)
         PanelTemplates_SetTab(attachment, this)
+
+        _G.AuctionFrameTopLeft:SetTexture("Interface\\AuctionFrame\\UI-AuctionFrame-Bid-TopLeft")
+        _G.AuctionFrameTop:SetTexture("Interface\\AuctionFrame\\UI-AuctionFrame-Auction-Top")
+        _G.AuctionFrameTopRight:SetTexture("Interface\\AuctionFrame\\UI-AuctionFrame-Auction-TopRight")
+        _G.AuctionFrameBotLeft:SetTexture("Interface\\AuctionFrame\\UI-AuctionFrame-Bid-BotLeft")
+        _G.AuctionFrameBot:SetTexture("Interface\\AuctionFrame\\UI-AuctionFrame-Auction-Bot")
+        _G.AuctionFrameBotRight:SetTexture("Interface\\AuctionFrame\\UI-AuctionFrame-Bid-BotRight")
 
         self.auctionHouse.frame:Show()
 
@@ -176,6 +184,15 @@ function addon.professions.gui:CreateEmbeddedGui()
         PanelTemplates_DeselectTab(this)
         self.auctionHouse.frame:Hide()
     end
+
+        hooksecurefunc(_G, "AuctionFrameTab_OnClick", function(button, ...)
+        if not button.isRXPProfessions then
+            tabButton:Deselected()
+            return
+        end
+
+        tabButton:Selected()
+    end)
 
     PanelTemplates_TabResize(tabButton, 0, nil, 72)
     PanelTemplates_SetNumTabs(attachment, index)
