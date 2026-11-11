@@ -16,7 +16,7 @@ addon.itemUpgrades = addon.itemUpgrades or {}
 -- Localize globals
 local _G = _G
 local pairs, ipairs = pairs, ipairs
-local lower, split, trim, fmt = string.lower, string.split, string.trim, string.format
+local lower, split, trim, fmt, lower = string.lower, string.split, string.trim, string.format, string.lower
 local min, floor = math.min, math.floor
 local band = bit.band
 local CanSendAuctionQuery, QueryAuctionItems = _G.CanSendAuctionQuery, _G.QueryAuctionItems
@@ -32,7 +32,9 @@ local SendSearchQuery = (_G.C_AuctionHouse and _G.C_AuctionHouse.SendSearchQuery
 local IsThrottledMessageSystemReady = (_G.C_AuctionHouse and _G.C_AuctionHouse.IsThrottledMessageSystemReady) or nil
 local MakeItemKey = (_G.C_AuctionHouse and _G.C_AuctionHouse.MakeItemKey) or nil
 local GetNumSkillLines, GetSkillLineInfo = _G.GetNumSkillLines, _G.GetSkillLineInfo
-local GetNumFactions, GetFactionInfo = _G.GetNumFactions, _G.GetFactionInfo
+local GetNumFactions, GetFactionInfo =
+    (_G.C_Reputation and _G.C_Reputation.GetNumFactions or _G.GetNumFactions),
+    (_G.C_CreatureInfo and C_CreatureInfo.GetFactionInfo or _G.GetFactionInfo)
 local GetMoney = _G.GetMoney
 local GetActiveConfigID = _G.C_ClassTalents and _G.C_ClassTalents.GetActiveConfigID
 local GetConfigIDBySystemID, GetNodeInfo, ConfigHasStagedChanges, GetStagedChanges, GetTreeNodes, GetConfigInfo =
@@ -247,7 +249,7 @@ local function gatherPlayerProfessionInfo()
             _, specializationIndex,
             specializationOffset, skillLineName = GetProfessionInfo(prof1Index)
             RXPCData.professions.profession1 = {
-                name = name,
+                name = lower(name),
                 skillLineId = skillLine,
                 skillLevel = skillLevel,
                 skillMaxLevel = maxSkillLevel
@@ -259,7 +261,7 @@ local function gatherPlayerProfessionInfo()
             _, specializationIndex,
             specializationOffset, skillLineName = GetProfessionInfo(prof2Index)
             RXPCData.professions.profession2 = {
-                name = name,
+                name = lower(name),
                 skillLineId = skillLine,
                 skillLevel = skillLevel,
                 skillMaxLevel = maxSkillLevel
@@ -273,8 +275,9 @@ local function gatherPlayerFactionInfo()
     if not RXPCData.professions then RXPCData.professions = {} end
 
     local name
+    local raceID = select(3, UnitRace("player"))
     for i = 1, GetNumFactions() do
-        name = GetFactionInfo(i)
+        name = addon.professions.session.isClassic and GetFactionInfo(i) or GetFactionInfo(raceID)
         if name and addon.professions.locale.FACTION_NAMES[name] then
             RXPCData.professions.faction = addon.professions.locale.FACTION_NAMES[name]
             break
