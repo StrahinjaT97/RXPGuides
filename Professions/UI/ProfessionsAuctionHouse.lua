@@ -22,6 +22,8 @@ addon.professions.gui.session = {
     isInitialized = false,
     isGuiCreated = false,
     isAhOpen = false,
+
+    title = "RXP Professions"
 }
 
 function addon.professions.gui:Setup()
@@ -36,6 +38,8 @@ end
 function addon.professions.gui:Reset()
     self.session.isAhOpen = false
     self.session.isGuiCreated = false
+
+    self.title = "RXP Professions"
 end
 
 local function createAuctionHousePanelButton(parent, text)
@@ -156,7 +160,7 @@ local function CreateClassicGui()
     self.auctionHouse.frame:SetPoint("TOPLEFT", attachment, "TOPLEFT")
     self.auctionHouse.frame:SetPoint("BOTTOMRIGHT", attachment, "BOTTOMRIGHT")
 
-    self.auctionHouse.frame.Title:SetText("RXP Professions")
+    self.auctionHouse.frame.Title:SetText(self.session.title)
 
     local index = attachment.numTabs + 1
     local tabButton = CreateFrame("Button", "AuctionFrameTab" .. index, attachment, "AuctionTabTemplate")
@@ -187,7 +191,7 @@ local function CreateClassicGui()
         self.auctionHouse.frame:Hide()
     end
 
-        hooksecurefunc(_G, "AuctionFrameTab_OnClick", function(button, ...)
+    hooksecurefunc(_G, "AuctionFrameTab_OnClick", function(button, ...)
         if not button.isRXPProfessions then
             tabButton:Deselected()
             return
@@ -259,6 +263,15 @@ local function CreateModernGui()
     frame.scanButton = scanButton
     frame.professionButton1 = professionButton1
     frame.professionButton2 = professionButton2
+
+
+    frame:SetScript("OnShow", function()
+        AuctionHouseFrame:SetTitle(self.session.title)
+    end)
+
+    frame:SetScript("OnHide", function()
+        AuctionHouseFrame:UpdateTitle()
+    end)
 
 
     self.auctionHouse = self.auctionHouse or {}

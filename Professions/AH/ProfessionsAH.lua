@@ -374,17 +374,16 @@ end
 local function updateTitleProgress()
     local percentage = addon.Round(addon.professions.AH.session.materialIndex / #addon.professions.AH.session.materialsToScan, 2) * 100
     percentage = floor(min(percentage, 100) + 0.5)
+    addon.professions.gui.session.title = fmt("%s / %s items scanned (%d%%)", addon.professions.AH.session.materialIndex,
+                                                #addon.professions.AH.session.materialsToScan, percentage)
+    if addon.professions.AH.session.materialIndex >= #addon.professions.AH.session.materialsToScan then
+        addon.professions.gui.session.title = "Done scanning"
+    end
     if addon.professions.session.isClassic then
-        addon.professions.gui.auctionHouse.frame.Title:SetText(fmt("%s / %s items scanned (%d%%)", addon.professions.AH.session.materialIndex,
-                                                #addon.professions.AH.session.materialsToScan, percentage))
-        if addon.professions.AH.session.materialIndex >= #addon.professions.AH.session.materialsToScan then
-            addon.professions.gui.auctionHouse.frame.Title:SetText("Done scanning")
-        end
+        addon.professions.gui.auctionHouse.frame.Title:SetText(addon.professions.gui.session.title)
     else
-        addon.professions.gui.auctionHouse.frame:GetParent():SetTitle(fmt("%s / %s items scanned (%d%%)", addon.professions.AH.session.materialIndex,
-                                                #addon.professions.AH.session.materialsToScan, percentage))
-        if addon.professions.AH.session.materialIndex >= #addon.professions.AH.session.materialsToScan then
-            addon.professions.gui.auctionHouse.frame:GetParent():SetTitle("Done scanning")
+        if addon.professions.gui.auctionHouse.frame:IsShown() then
+            addon.professions.gui.auctionHouse.frame:GetParent():SetTitle(addon.professions.gui.session.title)
         end
     end
 end
