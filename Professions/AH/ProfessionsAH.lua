@@ -224,6 +224,7 @@ local function gatherPlayerProfessionInfo()
                 if not foundFirst then
                     RXPCData.professions.profession1 = {
                         name = lower(PROFESSION_NAMES[skillName]),
+                        localeName = skillName,
                         skillLineId = SKILL_LINE_IDS[lower(PROFESSION_NAMES[skillName])],
                         skillLevel = skillRank,
                         skillMaxLevel = skillMaxRank,
@@ -232,6 +233,7 @@ local function gatherPlayerProfessionInfo()
                 else
                     RXPCData.professions.profession2 = {
                         name = lower(PROFESSION_NAMES[skillName]),
+                        localeName = skillName,
                         skillLineId = SKILL_LINE_IDS[lower(PROFESSION_NAMES[skillName])],
                         skillLevel = skillRank,
                         skillMaxLevel = skillMaxRank,
@@ -248,7 +250,8 @@ local function gatherPlayerProfessionInfo()
             _, specializationIndex,
             specializationOffset, skillLineName = GetProfessionInfo(prof1Index)
             RXPCData.professions.profession1 = {
-                name = lower(name),
+                name = lower(PROFESSION_NAMES[name]),
+                localeName = name,
                 skillLineId = skillLine,
                 skillLevel = skillLevel,
                 skillMaxLevel = maxSkillLevel
@@ -260,7 +263,8 @@ local function gatherPlayerProfessionInfo()
             _, specializationIndex,
             specializationOffset, skillLineName = GetProfessionInfo(prof2Index)
             RXPCData.professions.profession2 = {
-                name = lower(name),
+                name = lower(PROFESSION_NAMES[name]),
+                localeName = name,
                 skillLineId = skillLine,
                 skillLevel = skillLevel,
                 skillMaxLevel = maxSkillLevel

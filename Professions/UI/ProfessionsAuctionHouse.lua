@@ -106,12 +106,12 @@ local function RegisterProfessionsAuctionHouse()
 
         local professionButton1,  professionButton2, professionText2
         if RXPCData.professions.profession1 and RXPCData.professions.profession1.skillLineId ~= 0 then
-            professionButton1, _ = createAuctionHouseCheckButton(frame, RXPCData.professions.profession1.name)
+            professionButton1, _ = createAuctionHouseCheckButton(frame, RXPCData.professions.profession1.localeName)
             professionButton1:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
         end
         if RXPCData.professions.profession1 and RXPCData.professions.profession2 and
            RXPCData.professions.profession1.skillLineId ~= 0 and RXPCData.professions.profession2.skillLineId ~= 0 then
-            professionButton2, professionText2 = createAuctionHouseCheckButton(frame, RXPCData.professions.profession2.name)
+            professionButton2, professionText2 = createAuctionHouseCheckButton(frame, RXPCData.professions.profession2.localeName)
             professionButton2:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
             professionButton1:SetPoint("RIGHT", professionText2, "LEFT", -10, 0)
         end
@@ -239,12 +239,12 @@ local function CreateModernGui()
 
     local professionButton1,  professionButton2, professionText2
     if RXPCData.professions.profession1 and RXPCData.professions.profession1.skillLineId ~= 0 then
-        professionButton1, _ = createAuctionHouseCheckButton(frame, RXPCData.professions.profession1.name)
+        professionButton1, _ = createAuctionHouseCheckButton(frame, RXPCData.professions.profession1.localeName)
         professionButton1:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
     end
     if RXPCData.professions.profession1 and RXPCData.professions.profession2 and
         RXPCData.professions.profession1.skillLineId ~= 0 and RXPCData.professions.profession2.skillLineId ~= 0 then
-        professionButton2, professionText2 = createAuctionHouseCheckButton(frame, RXPCData.professions.profession2.name)
+        professionButton2, professionText2 = createAuctionHouseCheckButton(frame, RXPCData.professions.profession2.localeName)
         professionButton2:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
         professionButton1:SetPoint("RIGHT", professionText2, "LEFT", -10, 0)
     end
