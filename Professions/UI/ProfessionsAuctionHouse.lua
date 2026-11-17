@@ -67,6 +67,19 @@ local function createAuctionHouseCheckButton(parent, text)
     return checkButton, textFrame
 end
 
+function addon.professions.gui:createMessageFrame(text, timeVisible)
+    local messageFrame = CreateFrame("MessageFrame", nil, UIParent)
+    messageFrame:SetPoint("TOP")
+    messageFrame:SetSize(200, 200)
+    messageFrame:SetFont("fonts/arialn.ttf", 20, "")
+    messageFrame:AddMessage(text, 1, 0, 0) --TODO: localize this
+    messageFrame:SetFrameStrata("HIGH")
+    messageFrame:SetTimeVisible(timeVisible)
+    messageFrame:Hide()
+
+    return messageFrame
+end
+
 local function RegisterProfessionsAuctionHouse()
     local self = addon.professions.gui
     local Type, Version = "RXPProfessionsAuctionHouse", 1
@@ -104,20 +117,50 @@ local function RegisterProfessionsAuctionHouse()
         local scanButton = createAuctionHousePanelButton(frame, _G.SCAN or "Scan")
         scanButton:SetPoint("RIGHT", exportButton, "LEFT")
 
-        local professionButton1,  professionButton2, professionText2
+        local professionButton1,  professionText1 ,professionButton2, professionText2, scanAllButton, scanAllText
         if RXPCData.professions.profession1 and RXPCData.professions.profession1.skillLineId ~= 0 then
-            professionButton1, _ = createAuctionHouseCheckButton(frame, RXPCData.professions.profession1.localeName)
+            professionButton1, professionText1 = createAuctionHouseCheckButton(frame, RXPCData.professions.profession1.localeName)
             professionButton1:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
+
+            professionButton1:SetScript("OnClick", function (this)
+                if scanAllButton then
+                    scanAllButton:SetChecked(false)
+                end
+            end)
         end
         if RXPCData.professions.profession1 and RXPCData.professions.profession2 and
            RXPCData.professions.profession1.skillLineId ~= 0 and RXPCData.professions.profession2.skillLineId ~= 0 then
             professionButton2, professionText2 = createAuctionHouseCheckButton(frame, RXPCData.professions.profession2.localeName)
             professionButton2:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
             professionButton1:SetPoint("RIGHT", professionText2, "LEFT", -10, 0)
+
+            professionButton2:SetScript("OnClick", function (this)
+                if scanAllButton then
+                    scanAllButton:SetChecked(false)
+                end
+            end)
         end
 
+        if RXPCData.professions.profession1 and RXPCData.professions.profession1.skillLineId ~= 0 then
+            scanAllButton, scanAllText = createAuctionHouseCheckButton(frame, "Scan entire AH") --TODO: localize text
+            scanAllButton:SetPoint("RIGHT", professionText1, "LEFT", -10, 0)
+
+            scanAllButton:SetScript("OnClick", function (this)
+                if this:GetChecked() then
+                    if professionButton1 then
+                        professionButton1:SetChecked(false)
+                    end
+                    if professionButton2 then
+                        professionButton2:SetChecked(false)
+                    end
+                end
+            end)
+        end
+
+
         scanButton:SetScript("OnClick", function (this)
-            local flags = (professionButton1 and professionButton2 and professionButton1:GetChecked()
+            local flags = (scanAllButton and scanAllButton:GetChecked() and 4) or
+                        (professionButton1 and professionButton2 and professionButton1:GetChecked()
                         and professionButton2:GetChecked() and 3) or
                         (professionButton1 and professionButton1:GetChecked() and 1) or
                         (professionButton2 and professionButton2:GetChecked() and 2) or
@@ -130,6 +173,7 @@ local function RegisterProfessionsAuctionHouse()
         frame.scanButton = scanButton
         frame.professionButton1 = professionButton1
         frame.professionButton2 = professionButton2
+        frame.scanAllButton = scanAllButton
 
         local widget = {frame = frame, content = frame, type = Type}
 
@@ -237,20 +281,49 @@ local function CreateModernGui()
     local scanButton = createAuctionHousePanelButton(frame, _G.SCAN or "Scan")
     scanButton:SetPoint("RIGHT", exportButton, "LEFT")
 
-    local professionButton1,  professionButton2, professionText2
+    local professionButton1, professionText1, professionButton2, professionText2, scanAllButton, scanAllText
     if RXPCData.professions.profession1 and RXPCData.professions.profession1.skillLineId ~= 0 then
-        professionButton1, _ = createAuctionHouseCheckButton(frame, RXPCData.professions.profession1.localeName)
+        professionButton1, professionText1 = createAuctionHouseCheckButton(frame, RXPCData.professions.profession1.localeName)
         professionButton1:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
+
+        professionButton1:SetScript("OnClick", function (this)
+            if scanAllButton then
+                scanAllButton:SetChecked(false)
+            end
+        end)
     end
     if RXPCData.professions.profession1 and RXPCData.professions.profession2 and
         RXPCData.professions.profession1.skillLineId ~= 0 and RXPCData.professions.profession2.skillLineId ~= 0 then
         professionButton2, professionText2 = createAuctionHouseCheckButton(frame, RXPCData.professions.profession2.localeName)
         professionButton2:SetPoint("RIGHT", scanButton, "LEFT", -10, 0)
         professionButton1:SetPoint("RIGHT", professionText2, "LEFT", -10, 0)
+
+        professionButton2:SetScript("OnClick", function (this)
+            if scanAllButton then
+                scanAllButton:SetChecked(false)
+            end
+        end)
+    end
+
+    if RXPCData.professions.profession1 and RXPCData.professions.profession1.skillLineId ~= 0 then
+        scanAllButton, scanAllText = createAuctionHouseCheckButton(frame, "Scan entire AH") --TODO: localize this
+        scanAllButton:SetPoint("RIGHT", professionText1, "LEFT", -10, 0)
+
+        scanAllButton:SetScript("OnClick", function (this)
+            if this:GetChecked() then
+                if professionButton1 then
+                    professionButton1:SetChecked(false)
+                end
+                if professionButton2 then
+                    professionButton2:SetChecked(false)
+                end
+            end
+        end)
     end
 
     scanButton:SetScript("OnClick", function (this)
-        local flags = (professionButton1 and professionButton2 and professionButton1:GetChecked()
+        local flags = (scanAllButton and scanAllButton:GetChecked() and 4) or
+                    (professionButton1 and professionButton2 and professionButton1:GetChecked()
                     and professionButton2:GetChecked() and 3) or
                     (professionButton1 and professionButton1:GetChecked() and 1) or
                     (professionButton2 and professionButton2:GetChecked() and 2) or
@@ -263,6 +336,7 @@ local function CreateModernGui()
     frame.scanButton = scanButton
     frame.professionButton1 = professionButton1
     frame.professionButton2 = professionButton2
+    frame.scanAllButton = scanAllButton
 
 
     frame:SetScript("OnShow", function()
@@ -288,4 +362,5 @@ function addon.professions.gui:CreateGui()
     else
         CreateModernGui()
     end
+    self.cannotSearchAllMsgFrame = self:createMessageFrame("Cannot scan the entire Auction House at this moment", 2) --TODO: localize this
 end

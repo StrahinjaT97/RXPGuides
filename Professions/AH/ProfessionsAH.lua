@@ -43,6 +43,10 @@ local GetConfigIDBySystemID, GetNodeInfo, ConfigHasStagedChanges, GetStagedChang
     (_G.C_Traits and _G.C_Traits.GetStagedChanges),
     (_G.C_Traits and _G.C_Traits.GetTreeNodes),
     (_G.C_Traits and _G.C_Traits.GetConfigInfo)
+local ReplicateItems, GetNumReplicateItems, GetReplicateItemInfo =
+    (_G.C_AuctionHouse and _G.C_AuctionHouse.ReplicateItems),
+    (_G.C_AuctionHouse and _G.C_AuctionHouse.GetNumReplicateItems),
+    (_G.C_AuctionHouse and _G.C_AuctionHouse.GetReplicateItemInfo)
 
 -- Local renaming
 local RECIPES = addon.professions.recipeIds
@@ -67,6 +71,7 @@ local EVENTS_TO_REGISTER_AH = {
     forever = {
         "ITEM_SEARCH_RESULTS_UPDATED",
         "COMMODITY_SEARCH_RESULTS_UPDATED",
+        "REPLICATE_ITEM_LIST_UPDATE",
     },
 }
 
@@ -105,6 +110,9 @@ addon.professions.AH.session = {
     ahIsShowing = false,
     sentQuery = false,
     isScanning = false,
+
+    isFullScan = false,
+    isInitialScan = true,
 }
 
 --Setup
@@ -135,6 +143,8 @@ function addon.professions.AH.session:Reset()
     self.currentItemName = ""
     self.sentQuery = false
     self.isScanning = false
+    self.isFullScan = false
+    self.isInitialScan = true
 end
 
 
@@ -441,12 +451,34 @@ local function foreverScan(itemID)
 
 end
 
+--Scan the entire AH
+local function scanEntireAH()
+    if addon.professions.session.isClassic then
+        local _, canQueryAll = CanSendAuctionQuery()
+        if not canQueryAll then
+            if addon.professions.gui.cannotSearchAllMsgFrame:IsVisible() then
+                addon.professions.gui.cannotSearchAllMsgFrame:Clear()
+                addon.professions.gui.cannotSearchAllMsgFrame = nil
+                addon.professions.gui.cannotSearchAllMsgFrame = addon.professions.gui:createMessageFrame("Cannot scan the entire Auction House at this moment", 2) --TODO: localizde this
+            end
+            addon.professions.gui.cannotSearchAllMsgFrame:Show()
+            return
+        end
+        QueryAuctionItems("", nil, nil, 0, nil, nil, true, nil, nil)
+        addon.professions.AH.session.sentQuery = true
+    else
+        ReplicateItems()
+    end
+    addon.professions.AH.session.isFullScan = true
+end
+
 --Main scan function
 function addon.professions.AH:Scan()
     if not self.session.ahIsShowing then return end
     if self.session.isScanning then return end
 
     self.session.isScanning = true
+    self.session.isFullScan = false
     self.session.materialIndex = 1
     if addon.professions.session.isClassic then
         classicScan(self.session.materialsToScan[self.session.materialIndex])
@@ -493,7 +525,7 @@ function addon.professions.AH:AUCTION_ITEM_LIST_UPDATE()
     if not self.session.sentQuery then return end
 
     local resultCount, totalAuctions = GetNumAuctionItems("list")
-    if resultCount == 0 or totalAuctions == 0 then
+    if resultCount == 0 or totalAuctions == 0 and not self.session.isFullScan then
         self.session.sentQuery = false
         self.session.currentPage = 0
         self.session.materialIndex = self.session.materialIndex + 1
@@ -520,7 +552,11 @@ function addon.professions.AH:AUCTION_ITEM_LIST_UPDATE()
     end
 
     self.session.sentQuery = false
-    self.session.currentPage = self.session.currentPage + 1
+    if self.session.isFullScan then
+        return
+    else
+        self.session.currentPage = self.session.currentPage + 1
+    end
 
     classicScan(self.session.materialsToScan[self.session.materialIndex])
 end
@@ -579,21 +615,78 @@ function addon.professions.AH:COMMODITY_SEARCH_RESULTS_UPDATED(_, itemID)
     end
 end
 
+-- Full forever scan
+
+--Helper recursive function
+--Processes toProcess auctions every 0.05 sec
+--as not to freeze the UI.
+local function foreverProcessEntireAHScan(scanIndex, totalAuctions)
+    local toProcess = 20000
+    local processed = 0
+
+    local name, count, buyoutPrice, owner, itemID, hasAllInfo
+    local pricePerItem
+    while scanIndex < totalAuctions do
+        --name, texture, count, qualityID, usable, level, levelType, minBid, minIncrement, buyoutPrice, bidAmount, highBidder, bidderFullName, owner, ownerFullName, saleStatus, itemID, hasAllInfo = C_AuctionHouse.GetReplicateItemInfo(index) 
+        name, _, count, _, _, _, _, _, _, buyoutPrice, _, _, _, owner, _, _, itemID, hasAllInfo = GetReplicateItemInfo(scanIndex)
+        addon.professions.AH.session.foundItems[itemID] = addon.professions.AH.session.foundItems[itemID] or {}
+        if buyoutPrice > 0 then
+            pricePerItem = ceil(buyoutPrice / count)
+            addon.professions.AH.session.foundItems[itemID][pricePerItem] = (addon.professions.AH.session.foundItems[itemID][pricePerItem] or 0) + count
+        end
+        scanIndex = scanIndex + 1
+        processed = processed + 1
+    end
+    --[[if scanIndex < totalAuctions and false then
+        C_Timer.After(0.05, function ()
+            foreverProcessEntireAHScan(scanIndex, totalAuctions)
+        end)
+    else
+        if addon.professions.gui.auctionHouse.frame:IsShown() then
+            addon.professions.gui.session.title = "Done scanning" --TODO: localize this
+            addon.professions.gui.auctionHouse.frame:GetParent():SetText(addon.professions.gui.session.title)
+        end
+    end]]
+    addon.professions.gui.session.title = "Done scanning" --TODO: localize this
+    addon.professions.gui.auctionHouse.frame:GetParent():SetText(addon.professions.gui.session.title)
+end
+
+--Triggers on entire ah scan for forever
+function addon.professions.AH:REPLICATE_ITEM_LIST_UPDATE()
+    if not self.session.isInitialScan then return end
+
+    local totalAuctions = GetNumReplicateItems()
+    self.session.isInitialScan = false
+    if totalAuctions == 0 then return end
+
+    if addon.professions.gui.auctionHouse.frame:IsShown() then
+        addon.professions.gui.session.title = "Scanning full Auction House ..." --TODO: localize this
+        addon.professions.gui.auctionHouse.frame:GetParent():SetText(addon.professions.gui.session.title)
+    end
+
+    C_Timer.After(3, function () --TODO: maybe delete this
+        foreverProcessEntireAHScan(0, totalAuctions)
+    end)
+end
+
 --[[
 Scan flags:
 0 (0x0): Scan NONE
 1 (0x1): Scan the first profession
 2 (0x2): Scan the second profession
+4 (0x4): Scan entire AH
 ]]
 function addon.professions.AH:fullScan(flags)
     flags = flags or 0
     if flags == 0 then return end
+    if not RXPCData.professions.profession1.name then return end
 
-    if not RXPCData.professions.profession1.name then
-        return
-    end
     self.session:Reset()
     self.session.scannedAt = time()
+    if band(flags, 0x4) ~= 0 then
+        scanEntireAH()
+        return
+    end
     if band(flags, 0x1) ~= 0 then
         addon.professions.AH:gatherMaterialsToScan(RXPCData.professions.profession1.name)
     end
@@ -622,4 +715,6 @@ function addon.professions.AH:exportInfo()
     RXPCData.professions.scannedAt = self.session.scannedAt
 
     addon.professions.export.ShowWindow()
+end
+
 end
