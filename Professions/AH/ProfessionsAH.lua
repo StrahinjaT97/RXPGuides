@@ -717,4 +717,3 @@ function addon.professions.AH:exportInfo()
     addon.professions.export.ShowWindow()
 end
 
-end
