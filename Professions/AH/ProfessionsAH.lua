@@ -113,6 +113,7 @@ addon.professions.AH.session = {
 
     isFullScan = false,
     isInitialScan = true,
+    isForeverFullScanSuccessful = false, --checks if forever full scan succeeded for error message to appear
 }
 
 --Setup
@@ -145,6 +146,7 @@ function addon.professions.AH.session:Reset()
     self.isScanning = false
     self.isFullScan = false
     self.isInitialScan = true
+    self.isForeverFullScanSuccessful = false
 end
 
 
@@ -451,23 +453,34 @@ local function foreverScan(itemID)
 
 end
 
+
+local function showCannotSearchAllMessage()
+    if addon.professions.gui.cannotSearchAllMsgFrame then
+        addon.professions.gui.cannotSearchAllMsgFrame:Clear()
+        addon.professions.gui.cannotSearchAllMsgFrame = nil
+        addon.professions.gui.cannotSearchAllMsgFrame = addon.professions.gui:createMessageFrame("Cannot scan the entire Auction House at this moment", 2) --TODO: localizde this
+    end
+    addon.professions.gui.cannotSearchAllMsgFrame:Show()
+end
+
 --Scan the entire AH
 local function scanEntireAH()
     if addon.professions.session.isClassic then
         local _, canQueryAll = CanSendAuctionQuery()
         if not canQueryAll then
-            if addon.professions.gui.cannotSearchAllMsgFrame:IsVisible() then
-                addon.professions.gui.cannotSearchAllMsgFrame:Clear()
-                addon.professions.gui.cannotSearchAllMsgFrame = nil
-                addon.professions.gui.cannotSearchAllMsgFrame = addon.professions.gui:createMessageFrame("Cannot scan the entire Auction House at this moment", 2) --TODO: localizde this
-            end
-            addon.professions.gui.cannotSearchAllMsgFrame:Show()
+            showCannotSearchAllMessage()
             return
         end
         QueryAuctionItems("", nil, nil, 0, nil, nil, true, nil, nil)
         addon.professions.AH.session.sentQuery = true
     else
         ReplicateItems()
+        addon.professions.AH.session.isForeverFullScanSuccessful = false
+        C_Timer.After(0.3, function ()
+            if not addon.professions.AH.session.isForeverFullScanSuccessful then
+                showCannotSearchAllMessage()
+            end
+        end)
     end
     addon.professions.AH.session.isFullScan = true
 end
@@ -617,13 +630,8 @@ end
 
 -- Full forever scan
 
---Helper recursive function
---Processes toProcess auctions every 0.05 sec
---as not to freeze the UI.
+--Helper function
 local function foreverProcessEntireAHScan(scanIndex, totalAuctions)
-    local toProcess = 20000
-    local processed = 0
-
     local name, count, buyoutPrice, owner, itemID, hasAllInfo
     local pricePerItem
     while scanIndex < totalAuctions do
@@ -635,25 +643,16 @@ local function foreverProcessEntireAHScan(scanIndex, totalAuctions)
             addon.professions.AH.session.foundItems[itemID][pricePerItem] = (addon.professions.AH.session.foundItems[itemID][pricePerItem] or 0) + count
         end
         scanIndex = scanIndex + 1
-        processed = processed + 1
     end
-    --[[if scanIndex < totalAuctions and false then
-        C_Timer.After(0.05, function ()
-            foreverProcessEntireAHScan(scanIndex, totalAuctions)
-        end)
-    else
-        if addon.professions.gui.auctionHouse.frame:IsShown() then
-            addon.professions.gui.session.title = "Done scanning" --TODO: localize this
-            addon.professions.gui.auctionHouse.frame:GetParent():SetText(addon.professions.gui.session.title)
-        end
-    end]]
     addon.professions.gui.session.title = "Done scanning" --TODO: localize this
     addon.professions.gui.auctionHouse.frame:GetParent():SetText(addon.professions.gui.session.title)
+    addon.professions.AH.session.isInitialScan = true
 end
 
 --Triggers on entire ah scan for forever
 function addon.professions.AH:REPLICATE_ITEM_LIST_UPDATE()
     if not self.session.isInitialScan then return end
+    self.session.isForeverFullScanSuccessful = true
 
     local totalAuctions = GetNumReplicateItems()
     self.session.isInitialScan = false
