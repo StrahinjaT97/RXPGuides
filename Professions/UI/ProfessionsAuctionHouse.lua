@@ -118,13 +118,7 @@ local function RegisterProfessionsAuctionHouse()
         scanButton:SetPoint("RIGHT", exportButton, "LEFT")
 
         scanButton:SetScript("OnClick", function (this)
-            local flags = (scanAllButton and scanAllButton:GetChecked() and 4) or
-                        (professionButton1 and professionButton2 and professionButton1:GetChecked()
-                        and professionButton2:GetChecked() and 3) or
-                        (professionButton1 and professionButton1:GetChecked() and 1) or
-                        (professionButton2 and professionButton2:GetChecked() and 2) or
-                        0
-            addon.professions.AH:fullScan(flags)
+            addon.professions.AH:fullScan()
         end)
 
         frame.closeButton = closeButton
@@ -245,13 +239,7 @@ local function CreateModernGui()
     scanButton:SetPoint("RIGHT", exportButton, "LEFT")
 
     scanButton:SetScript("OnClick", function (this)
-        local flags = (scanAllButton and scanAllButton:GetChecked() and 4) or
-                    (professionButton1 and professionButton2 and professionButton1:GetChecked()
-                    and professionButton2:GetChecked() and 3) or
-                    (professionButton1 and professionButton1:GetChecked() and 1) or
-                    (professionButton2 and professionButton2:GetChecked() and 2) or
-                    0
-        addon.professions.AH:fullScan(flags)
+        addon.professions.AH:fullScan()
     end)
 
     scanButton:SetScript("OnEnter", function (this)
