@@ -234,6 +234,13 @@ local function CreateModernGui()
         addon.professions.AH:exportInfo()
     end)
 
+    exportButton:SetScript("OnEnter", function (this)
+        GameTooltip:SetOwner(this, "ANCHOR_BOTTOM")
+        GameTooltip:SetText("Show export window", 1, 1, 1) --TODO: localize this
+        GameTooltip:AddLine("Shows the export window with the generated export string", 0.8, 0.8, 0.8, true)
+        GameTooltip:Show()
+    end)
+
     local scanButton = createAuctionHousePanelButton(frame, _G.SCAN or "Scan")
     scanButton:SetPoint("RIGHT", exportButton, "LEFT")
 
@@ -245,6 +252,13 @@ local function CreateModernGui()
                     (professionButton2 and professionButton2:GetChecked() and 2) or
                     0
         addon.professions.AH:fullScan(flags)
+    end)
+
+    scanButton:SetScript("OnEnter", function (this)
+        GameTooltip:SetOwner(this, "ANCHOR_BOTTOM")
+        GameTooltip:SetText("Scans the Auction House", 1, 1, 1) --TODO: localize this
+        GameTooltip:AddLine("Scans the entire Auction House for relevant information. This may be done only once every 15 minutes. The scan might take few seconds to finish, please be patient and DON'T MOVE!", 0.8, 0.8, 0.8, true) --TODO: localize this
+        GameTooltip:Show()
     end)
 
     frame.closeButton = closeButton
