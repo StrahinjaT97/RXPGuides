@@ -7,7 +7,7 @@ addon.professions.export = {}
 
 -- Localize globals
 local _G = _G
-local pairs, ipairs, type, tostring, tsort, tconcat = pairs, ipairs, type, tostring, table.sort, table.concat
+local pairs, ipairs, type, tostring, tsort, tconcat, tinsert = pairs, ipairs, type, tostring, table.sort, table.concat, table.insert
 local fmt, byte, gsub, floor = string.format, string.byte, string.gsub, math.floor
 local GetMoney, GetRealmName, GetCurrentRegion, time, date = _G.GetMoney, _G.GetRealmName, _G.GetCurrentRegion, _G.time, _G.date
 local UnitName, UnitClass = _G.UnitName, _G.UnitClass
@@ -236,4 +236,7 @@ function addon.professions.export.ShowWindow()
     window:AddChild(box)
     box:SetFocus()
     box:HighlightText()
+
+    _G["RXPProfExportWindowFrame"] = window.frame
+    tinsert(UISpecialFrames, "RXPProfExportWindowFrame")
 end
