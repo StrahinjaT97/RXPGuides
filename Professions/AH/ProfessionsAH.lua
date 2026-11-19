@@ -69,8 +69,6 @@ local EVENTS_TO_REGISTER_AH = {
     },
     --Forever
     forever = {
-        "ITEM_SEARCH_RESULTS_UPDATED",
-        "COMMODITY_SEARCH_RESULTS_UPDATED",
         "REPLICATE_ITEM_LIST_UPDATE",
     },
 }
@@ -103,15 +101,10 @@ addon.professions.AH.session = {
     isInitialized = false,
     auctionFilterButtons = {"Trade Goods"},
     foundItems = {},
-    materialsToScan = {},
-    materialIndex = 1,
-    currentPage = 0,
-    currentItemName = "",
     ahIsShowing = false,
     sentQuery = false,
     isScanning = false,
 
-    isFullScan = false,
     isInitialScan = true,
     isForeverFullScanSuccessful = false, --checks if forever full scan succeeded for error message to appear
 }
@@ -138,13 +131,8 @@ end
 
 function addon.professions.AH.session:Reset()
     self.foundItems = {}
-    self.materialIndex = 1
-    self.materialsToScan = {}
-    self.currentPage = 0
-    self.currentItemName = ""
     self.sentQuery = false
     self.isScanning = false
-    self.isFullScan = false
     self.isInitialScan = true
     self.isForeverFullScanSuccessful = false
 end
@@ -187,35 +175,6 @@ local function initialScanInventoryForCraftedItems(prof1Name, prof2Name)
             end
         end
     end
-end
-
-function addon.professions.AH:gatherTradeableRecipesToScan(professionName)
-    if addon.professions.session.isClassic then
-        if not TRADEABLE_RECIPES.classic[professionName] then return end
-        for tradeableRecipeId, _ in pairs(TRADEABLE_RECIPES.classic[professionName]) do
-            tinsert(self.session.materialsToScan, tradeableRecipeId)
-        end
-    else
-        if not TRADEABLE_RECIPES.forever[professionName] then return end
-        for tradeableRecipeId, _ in pairs(TRADEABLE_RECIPES.forever[professionName]) do
-            tinsert(self.session.materialsToScan, tradeableRecipeId)
-        end
-    end
-end
-
-function addon.professions.AH:gatherMaterialsToScan(professionName)
-    if addon.professions.session.isClassic then
-        if not MATERIALS.classic[professionName] then return end
-        for materialId, _ in pairs(MATERIALS.classic[professionName]) do
-            tinsert(self.session.materialsToScan, materialId)
-        end
-    else
-        if not MATERIALS.forever[professionName] then return end
-        for materialId, _ in pairs(MATERIALS.forever[professionName]) do
-            tinsert(self.session.materialsToScan, materialId)
-        end
-    end
-    self:gatherTradeableRecipesToScan(professionName)
 end
 
 -- Player info gathering functions
@@ -386,73 +345,6 @@ local function gatherPlayerKnownRecipes()
     end
 end
 
---Updates the tile of the AH card with current progress
-local function updateTitleProgress()
-    local percentage = addon.Round(addon.professions.AH.session.materialIndex / #addon.professions.AH.session.materialsToScan, 2) * 100
-    percentage = floor(min(percentage, 100) + 0.5)
-    addon.professions.gui.session.title = fmt("%s / %s items scanned (%d%%)", addon.professions.AH.session.materialIndex,
-                                                #addon.professions.AH.session.materialsToScan, percentage)
-    if addon.professions.AH.session.materialIndex >= #addon.professions.AH.session.materialsToScan then
-        addon.professions.gui.session.title = "Done scanning"
-    end
-    if addon.professions.session.isClassic then
-        addon.professions.gui.auctionHouse.frame.Title:SetText(addon.professions.gui.session.title)
-    else
-        if addon.professions.gui.auctionHouse.frame:IsShown() then
-            addon.professions.gui.auctionHouse.frame:GetParent():SetTitle(addon.professions.gui.session.title)
-        end
-    end
-end
-
-
---Scan functions
-
---Scan for classic versions
-local function classicScan(itemID)
-    if not addon.professions.session.isClassic then return end
-
-    if addon.professions.AH.session.sentQuery then return end
-    if not CanSendAuctionQuery() then
-        C_Timer.After(0.35, function ()
-           classicScan(itemID)
-        end)
-        return
-    end
-
-    local item = Item:CreateFromItemID(itemID)
-    local itemName
-    item:ContinueOnItemLoad(function ()
-        itemName = item:GetItemName()
-        addon.professions.AH.session.sentQuery = true
-        -- text, minLevel, maxLevel, page, usable, rarity, getAll, exactMatch, filterData
-        QueryAuctionItems(itemName, nil, nil, addon.professions.AH.session.currentPage, false, nil, false, true, nil)
-    end)
-end
-
-
---Scan for forever version
-local function foreverScan(itemID)
-    if addon.professions.session.isClassic then return end
-
-    if addon.professions.AH.session.sentQuery then return end
-
-    if not IsThrottledMessageSystemReady() then
-        C_Timer.After(0.35, function ()
-            foreverScan(itemID)
-        end)
-        return
-    end
-
-    local item = Item:CreateFromItemID(itemID)
-    local itemKey
-    item:ContinueOnItemLoad(function ()
-        itemKey = MakeItemKey(item:GetItemID())
-        addon.professions.AH.session.sentQuery = true
-        SendSearchQuery(itemKey, {}, false)
-    end)
-
-end
-
 
 local function showCannotSearchAllMessage()
     if addon.professions.gui.cannotSearchAllMsgFrame then
@@ -465,6 +357,8 @@ end
 
 --Scan the entire AH
 local function scanEntireAH()
+    if addon.professions.AH.session.isScanning then return end
+
     if addon.professions.session.isClassic then
         local _, canQueryAll = CanSendAuctionQuery()
         if not canQueryAll then
@@ -475,30 +369,11 @@ local function scanEntireAH()
         addon.professions.AH.session.sentQuery = true
     else
         ReplicateItems()
+        addon.professions.AH.session.sentQuery = true
         addon.professions.AH.session.isForeverFullScanSuccessful = false
-        C_Timer.After(0.3, function ()
-            if not addon.professions.AH.session.isForeverFullScanSuccessful then
-                showCannotSearchAllMessage()
-            end
-        end)
-    end
-    addon.professions.AH.session.isFullScan = true
-end
-
---Main scan function
-function addon.professions.AH:Scan()
-    if not self.session.ahIsShowing then return end
-    if self.session.isScanning then return end
-
-    self.session.isScanning = true
-    self.session.isFullScan = false
-    self.session.materialIndex = 1
-    if addon.professions.session.isClassic then
-        classicScan(self.session.materialsToScan[self.session.materialIndex])
-    else
-        foreverScan(self.session.materialsToScan[self.session.materialIndex])
     end
 end
+
 
 --Events
 function addon.professions.AH:AUCTION_HOUSE_SHOW()
@@ -538,18 +413,6 @@ function addon.professions.AH:AUCTION_ITEM_LIST_UPDATE()
     if not self.session.sentQuery then return end
 
     local resultCount, totalAuctions = GetNumAuctionItems("list")
-    if resultCount == 0 or totalAuctions == 0 and not self.session.isFullScan then
-        self.session.sentQuery = false
-        self.session.currentPage = 0
-        self.session.materialIndex = self.session.materialIndex + 1
-        updateTitleProgress()
-
-        if self.session.materialIndex <= #self.session.materialsToScan then
-            classicScan(self.session.materialsToScan[self.session.materialIndex])
-        end
-        return
-    end
-
     local name, count, buyoutPrice, owner, itemID, hasAllInfo, itemLink
     local pricePerItem
     for i = 1, resultCount do
@@ -564,74 +427,22 @@ function addon.professions.AH:AUCTION_ITEM_LIST_UPDATE()
         end
     end
 
+    addon.professions.gui.auctionHouse.frame.Title:SetText("Done scanning") --TODO: localize this
+    self.session.isScanning = false
     self.session.sentQuery = false
-    if self.session.isFullScan then
-        return
-    else
-        self.session.currentPage = self.session.currentPage + 1
-    end
-
-    classicScan(self.session.materialsToScan[self.session.materialIndex])
 end
 
 
 --Forever events
-function addon.professions.AH:ITEM_SEARCH_RESULTS_UPDATED(_, itemKey, _)
-    if not self.session.sentQuery then return end
-
-    local resultCount = GetNumItemSearchResults(itemKey)
-    local result, itemID, price, count
-    local totalCount = 0
-    for i = 1, resultCount do
-		result = GetItemSearchResultInfo(itemKey, i)
-        if result and result.buyoutAmount then
-            itemID = result.itemKey.itemID
-            price = result.buyoutAmount
-            count = result.quantity
-            self.session.foundItems[itemID] = self.session.foundItems[itemID] or {}
-            self.session.foundItems[itemID][price] = count
-            totalCount = totalCount + count
-        end
-	end
-
-    self.session.sentQuery = false
-    self.session.materialIndex = self.session.materialIndex + 1
-    updateTitleProgress()
-    if self.session.materialIndex <= #self.session.materialsToScan then
-        foreverScan(self.session.materialsToScan[self.session.materialIndex])
-    end
-end
-
-
-function addon.professions.AH:COMMODITY_SEARCH_RESULTS_UPDATED(_, itemID)
-    if not self.session.sentQuery then return end
-
-    local resultCount = GetNumCommoditySearchResults(itemID)
-    local result,price, count
-    local totalCount = 0
-    for i = 1, resultCount do
-		result = GetCommoditySearchResultInfo(itemID, i)
-        if result then
-            price = result.unitPrice
-            count = result.quantity
-            self.session.foundItems[itemID] = self.session.foundItems[itemID] or {}
-            self.session.foundItems[itemID][price] = count
-            totalCount = totalCount + count
-        end
-	end
-
-    self.session.sentQuery = false
-    self.session.materialIndex = self.session.materialIndex + 1
-    updateTitleProgress()
-    if self.session.materialIndex <= #self.session.materialsToScan then
-        foreverScan(self.session.materialsToScan[self.session.materialIndex])
-    end
-end
 
 -- Full forever scan
 
 --Helper function
 local function foreverProcessEntireAHScan(scanIndex, totalAuctions)
+    if addon.professions.AH.session.isScanning then return end
+
+    addon.professions.AH.session.isScanning = true
+
     local name, count, buyoutPrice, owner, itemID, hasAllInfo
     local pricePerItem
     while scanIndex < totalAuctions do
@@ -645,8 +456,11 @@ local function foreverProcessEntireAHScan(scanIndex, totalAuctions)
         scanIndex = scanIndex + 1
     end
     addon.professions.gui.session.title = "Done scanning" --TODO: localize this
-    addon.professions.gui.auctionHouse.frame:GetParent():SetText(addon.professions.gui.session.title)
-    addon.professions.AH.session.isInitialScan = true
+    addon.professions.gui.auctionHouse.frame:GetParent():SetTitle(addon.professions.gui.session.title)
+    --We need to keep these disabled. Once the scan is done it can only be attempted by opening the AH again
+    --TODO: add a better update to these values with C_Time of 15 minutes!
+    --addon.professions.AH.session.isScanning = false
+    --addon.professions.AH.session.isInitialScan = true
 end
 
 --Triggers on entire ah scan for forever
@@ -654,56 +468,28 @@ function addon.professions.AH:REPLICATE_ITEM_LIST_UPDATE()
     if not self.session.isInitialScan then return end
     self.session.isForeverFullScanSuccessful = true
 
-    local totalAuctions = GetNumReplicateItems()
-    self.session.isInitialScan = false
-    if totalAuctions == 0 then return end
-
-    if addon.professions.gui.auctionHouse.frame:IsShown() then
+    if self.session.isInitialScan and addon.professions.gui.auctionHouse.frame:IsShown() then
         addon.professions.gui.session.title = "Scanning full Auction House ..." --TODO: localize this
-        addon.professions.gui.auctionHouse.frame:GetParent():SetText(addon.professions.gui.session.title)
+        addon.professions.gui.auctionHouse.frame:GetParent():SetTitle(addon.professions.gui.session.title)
     end
 
-    C_Timer.After(3, function () --TODO: maybe delete this
-        foreverProcessEntireAHScan(0, totalAuctions)
-    end)
+    local totalAuctions = GetNumReplicateItems()
+    self.session.isInitialScan = false
+    if totalAuctions == 0 then
+        showCannotSearchAllMessage()
+        return
+    end
+
+    foreverProcessEntireAHScan(0, totalAuctions)
 end
 
---[[
-Scan flags:
-0 (0x0): Scan NONE
-1 (0x1): Scan the first profession
-2 (0x2): Scan the second profession
-4 (0x4): Scan entire AH
-]]
-function addon.professions.AH:fullScan(flags)
-    flags = flags or 0
-    if flags == 0 then return end
+function addon.professions.AH:fullScan()
     if not RXPCData.professions.profession1.name then return end
 
     self.session:Reset()
     self.session.scannedAt = time()
-    if band(flags, 0x4) ~= 0 then
-        scanEntireAH()
-        return
-    end
-    if band(flags, 0x1) ~= 0 then
-        addon.professions.AH:gatherMaterialsToScan(RXPCData.professions.profession1.name)
-    end
-    if RXPCData.professions.profession2.name then
-        if band(flags, 0x2) ~= 0 then
-            addon.professions.AH:gatherMaterialsToScan(RXPCData.professions.profession2.name)
-        end
-    end
-
-    addon.professions.AH.session.materialIndex = 1
-    if addon.professions.session.isClassic then
-        addon.professions.gui.auctionHouse.frame.Title:SetText("Starting scan ...")
-    else
-        addon.professions.gui.auctionHouse.frame:GetParent():SetTitle("Starting scan ...")
-    end
-    addon.professions.AH:Scan()
+    scanEntireAH()
 end
-
 
 function addon.professions.AH:exportInfo()
     gatherPlayerProfessionInfo()
