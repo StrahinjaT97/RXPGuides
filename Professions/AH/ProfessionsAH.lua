@@ -141,15 +141,15 @@ end
 --Local functions
 
 --Helper function to determine if itemID is part of a profession
-local function isRecipeOrMaterial(itemID, professionName)
+local function isRecipeOrMaterialOrTradeable(itemID, professionName)
     if not professionName then return end
     if not type(itemID) == "number" then return end
     if addon.professions.session.isClassic then
-        if not RECIPES.classic[professionName] and not MATERIALS.classic[professionName] then return end
-        return RECIPES.classic[professionName][itemID] or MATERIALS.classic[professionName][itemID]
+        if not RECIPES.classic[professionName] and not MATERIALS.classic[professionName] and not TRADEABLE_RECIPES.classic[professionName] then return end
+        return RECIPES.classic[professionName][itemID] or MATERIALS.classic[professionName][itemID] or TRADEABLE_RECIPES.classic[professionName][itemID]
     else
-        if not RECIPES.forever[professionName] and not MATERIALS.forever[professionName] then return end
-        return RECIPES.forever[professionName][itemID] or MATERIALS.forever[professionName][itemID]
+        if not RECIPES.forever[professionName] and not MATERIALS.forever[professionName] and not TRADEABLE_RECIPES.forever[professionName] then return end
+        return RECIPES.forever[professionName][itemID] or MATERIALS.forever[professionName][itemID] or TRADEABLE_RECIPES.forever[professionName][itemID]
     end
 end
 
@@ -168,7 +168,7 @@ local function initialScanInventoryForCraftedItems(prof1Name, prof2Name)
         end
         for slot = 1, numberOfSlots do
             local containerInfo = GetContainerItemInfo(bagID, slot)
-            if containerInfo and (isRecipeOrMaterial(containerInfo.itemID, prof1Name) or isRecipeOrMaterial(containerInfo.itemID, prof2Name)) then
+            if containerInfo and (isRecipeOrMaterialOrTradeable(containerInfo.itemID, prof1Name) or isRecipeOrMaterialOrTradeable(containerInfo.itemID, prof2Name)) then
                 itemID = containerInfo.itemID
                 itemCount = containerInfo.stackCount
                 RXPCData.craftedItems[itemID] = (RXPCData.craftedItems[itemID] or 0) + itemCount
