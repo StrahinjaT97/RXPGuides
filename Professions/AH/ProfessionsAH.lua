@@ -145,12 +145,43 @@ local function isRecipeOrMaterialOrTradeable(itemID, professionName)
     if not professionName then return end
     if not type(itemID) == "number" then return end
     if addon.professions.session.isClassic then
-        if not RECIPES.classic[professionName] and not MATERIALS.classic[professionName] and not TRADEABLE_RECIPES.classic[professionName] then return end
+        if not RECIPES.classic or not MATERIALS.classic or not TRADEABLE_RECIPES.classic then return end
+        if not RECIPES.classic[professionName] or not MATERIALS.classic[professionName] or not TRADEABLE_RECIPES.classic[professionName] then return end
         return RECIPES.classic[professionName][itemID] or MATERIALS.classic[professionName][itemID] or TRADEABLE_RECIPES.classic[professionName][itemID]
     else
-        if not RECIPES.forever[professionName] and not MATERIALS.forever[professionName] and not TRADEABLE_RECIPES.forever[professionName] then return end
+        if not RECIPES.forever or not MATERIALS.forever or not TRADEABLE_RECIPES.forever then return end
+        if not RECIPES.forever[professionName] or not MATERIALS.forever[professionName] or not TRADEABLE_RECIPES.forever[professionName] then return end
         return RECIPES.forever[professionName][itemID] or MATERIALS.forever[professionName][itemID] or TRADEABLE_RECIPES.forever[professionName][itemID]
     end
+end
+
+--Checks whether given itemID should be included in foundItems.
+--itemID should be include in foundItems if its a any part of any recpe
+local function includeInFoundItems(itemID)
+    if not type(itemID) == "number" then return end
+
+    local profs = {
+        "alchemy",
+        "blacksmithing",
+        "enchanting",
+        "engineering",
+        "leatherworking",
+        "tailoring"
+    }
+    if addon.professions.session.isClassic then
+        if not RECIPES.classic or not MATERIALS.classic or not TRADEABLE_RECIPES.classic then return end
+        for _, prof in ipairs(profs) do
+            if not RECIPES.classic[prof] or not MATERIALS.classic[prof] or not TRADEABLE_RECIPES.classic[prof] then return end
+            if RECIPES.classic[prof][itemID] or MATERIALS.classic[prof][itemID] or TRADEABLE_RECIPES.classic[prof][itemID] then return true end
+        end
+    else
+        if not RECIPES.forever or not MATERIALS.forever or not TRADEABLE_RECIPES.forever then return end
+        for _, prof in ipairs(profs) do
+            if not RECIPES.forever[prof] or not MATERIALS.forever[prof] or not TRADEABLE_RECIPES.forever[prof] then return end
+            if RECIPES.forever[prof][itemID] or MATERIALS.forever[prof][itemID] or TRADEABLE_RECIPES.forever[prof][itemID] then return true end
+        end
+    end
+    return false
 end
 
 --Scans backpacks for items created by recipes in backpacks for
@@ -419,11 +450,12 @@ function addon.professions.AH:AUCTION_ITEM_LIST_UPDATE()
         itemLink = GetAuctionItemLink("list", i)
         -- name, texture, count, quality, canUse, level, levelColHeader, minBid, minIncrement, buyoutPrice, bidAmount, highBidder, bidderFullName, owner, ownerFullName, saleStatus, itemId, hasAllInfo = GetAuctionItemInfo(type, index)
         name, _, count, _, _, _, _, _, _, buyoutPrice, _, _, _, owner, _, _, itemID, hasAllInfo = GetAuctionItemInfo("list", i)
-
-        self.session.foundItems[itemID] = self.session.foundItems[itemID] or {}
-        if buyoutPrice > 0 then
-            pricePerItem = ceil(buyoutPrice / count)
-            self.session.foundItems[itemID][pricePerItem] = (self.session.foundItems[itemID][pricePerItem] or 0) + count
+        if includeInFoundItems(itemID) then
+            self.session.foundItems[itemID] = self.session.foundItems[itemID] or {}
+            if buyoutPrice > 0 then
+                pricePerItem = ceil(buyoutPrice / count)
+                self.session.foundItems[itemID][pricePerItem] = (self.session.foundItems[itemID][pricePerItem] or 0) + count
+            end
         end
     end
 
@@ -448,10 +480,12 @@ local function foreverProcessEntireAHScan(scanIndex, totalAuctions)
     while scanIndex < totalAuctions do
         --name, texture, count, qualityID, usable, level, levelType, minBid, minIncrement, buyoutPrice, bidAmount, highBidder, bidderFullName, owner, ownerFullName, saleStatus, itemID, hasAllInfo = C_AuctionHouse.GetReplicateItemInfo(index) 
         name, _, count, _, _, _, _, _, _, buyoutPrice, _, _, _, owner, _, _, itemID, hasAllInfo = GetReplicateItemInfo(scanIndex)
-        addon.professions.AH.session.foundItems[itemID] = addon.professions.AH.session.foundItems[itemID] or {}
-        if buyoutPrice > 0 then
-            pricePerItem = ceil(buyoutPrice / count)
-            addon.professions.AH.session.foundItems[itemID][pricePerItem] = (addon.professions.AH.session.foundItems[itemID][pricePerItem] or 0) + count
+        if includeInFoundItems(itemID) then
+            addon.professions.AH.session.foundItems[itemID] = addon.professions.AH.session.foundItems[itemID] or {}
+            if buyoutPrice > 0 then
+                pricePerItem = ceil(buyoutPrice / count)
+                addon.professions.AH.session.foundItems[itemID][pricePerItem] = (addon.professions.AH.session.foundItems[itemID][pricePerItem] or 0) + count
+            end
         end
         scanIndex = scanIndex + 1
     end
