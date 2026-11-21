@@ -94,6 +94,8 @@ local OVERTIME_IDS = {
     OVERTIME_SPELL_ID = 1225451,
 }
 
+local PRICE_PER_ITEM_THRESHOLD = 5e5
+
 addon.professions.AH = addon:NewModule("ProfessionsAH", "AceEvent-3.0")
 
 
@@ -454,7 +456,9 @@ function addon.professions.AH:AUCTION_ITEM_LIST_UPDATE()
             self.session.foundItems[itemID] = self.session.foundItems[itemID] or {}
             if buyoutPrice > 0 then
                 pricePerItem = ceil(buyoutPrice / count)
-                self.session.foundItems[itemID][pricePerItem] = (self.session.foundItems[itemID][pricePerItem] or 0) + count
+                if pricePerItem <= PRICE_PER_ITEM_THRESHOLD then 
+                    self.session.foundItems[itemID][pricePerItem] = (self.session.foundItems[itemID][pricePerItem] or 0) + count
+                end
             end
         end
     end
@@ -484,7 +488,9 @@ local function foreverProcessEntireAHScan(scanIndex, totalAuctions)
             addon.professions.AH.session.foundItems[itemID] = addon.professions.AH.session.foundItems[itemID] or {}
             if buyoutPrice > 0 then
                 pricePerItem = ceil(buyoutPrice / count)
-                addon.professions.AH.session.foundItems[itemID][pricePerItem] = (addon.professions.AH.session.foundItems[itemID][pricePerItem] or 0) + count
+                if pricePerItem <= PRICE_PER_ITEM_THRESHOLD then
+                    addon.professions.AH.session.foundItems[itemID][pricePerItem] = (addon.professions.AH.session.foundItems[itemID][pricePerItem] or 0) + count
+                end
             end
         end
         scanIndex = scanIndex + 1
