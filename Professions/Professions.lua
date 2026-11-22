@@ -10,6 +10,9 @@ local _G = _G
 local lower, find, match = string.lower, string.find, string.match
 local pairs, ipairs, tonumber = pairs, ipairs, tonumber
 
+-- Locale enums
+local DEFAULT_LAST_SCAN = "2026-01-01T00:00:00Z"
+
 
 addon.professions = addon:NewModule("ProfessionsGuide", "AceEvent-3.0")
 
@@ -103,6 +106,7 @@ function addon.professions:Setup()
         end
     end
     RXPCData.professions.isInitialScanned = RXPCData.professions.isInitialScanned or false
+    RXPData.professions.lastScanAt = RXPData.professions.lastScanAt or DEFAULT_LAST_SCAN
     setUpRXPCData()
     self.AH:Setup()
     self.gui:Setup()
