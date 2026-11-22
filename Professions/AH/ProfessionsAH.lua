@@ -10,12 +10,13 @@ addon.professions.PROFESSIONS = addon.professions.PROFESSIONS or {}
 addon.professions.locale = addon.professions.locale or {}
 addon.professions.export = addon.professions.export or {}
 addon.professions.gui = addon.professions.gui or {}
+addon.professions.utils = addon.professions.utils or {}
 
 
 -- Localize globals
 local _G = _G
 local pairs, ipairs = pairs, ipairs
-local lower, split, trim, fmt, lower = string.lower, string.split, string.trim, string.format, string.lower
+local lower, split, trim, fmt, lower, match = string.lower, string.split, string.trim, string.format, string.lower, string.match
 local min, floor = math.min, math.floor
 local band = bit.band
 local CanSendAuctionQuery, QueryAuctionItems = _G.CanSendAuctionQuery, _G.QueryAuctionItems
@@ -94,10 +95,13 @@ local OVERTIME_IDS = {
     OVERTIME_SPELL_ID = 1225451,
 }
 
+-- Local constants
 local PRICE_PER_ITEM_THRESHOLD = 5e5
 
 addon.professions.AH = addon:NewModule("ProfessionsAH", "AceEvent-3.0")
 
+-- Module constants
+addon.professions.WAIT_TIME_IN_SECONDS = 15 * 60
 
 addon.professions.AH.session = {
     isInitialized = false,
@@ -106,9 +110,6 @@ addon.professions.AH.session = {
     ahIsShowing = false,
     sentQuery = false,
     isScanning = false,
-
-    isInitialScan = true,
-    isForeverFullScanSuccessful = false, --checks if forever full scan succeeded for error message to appear
 }
 
 --Setup
@@ -135,8 +136,6 @@ function addon.professions.AH.session:Reset()
     self.foundItems = {}
     self.sentQuery = false
     self.isScanning = false
-    self.isInitialScan = true
-    self.isForeverFullScanSuccessful = false
 end
 
 
@@ -378,6 +377,56 @@ local function gatherPlayerKnownRecipes()
     end
 end
 
+--Checks if enough time
+--has passed since last call.
+--Also returns elapsed time since the last call
+function addon.professions.AH:hasEnoughTimePassed()
+    if not RXPData.professions.lastScanAt then return true end
+
+    local datetime = date("!%Y-%m-%dT%H:%M:%SZ", time())
+    local dateNow, timeNow = match(datetime, "([^T]+)T([^Z]+)Z")
+    local dateLast, timeLast = match(RXPData.professions.lastScanAt, "([^T]+)T([^Z]+)Z")
+
+    local yearNow,  monthNow, dayNow = match(dateNow, "([^%-]+)-([^%-]+)-([^%-]+)")
+    local yearLast, monthLast, dayLast = match(dateLast, "([^%-]+)-([^%-]+)-([^%-]+)")
+
+    local hourNow, minuteNow, secondNow = match(timeNow, "([^:]+):([^:]+):([^:]+)")
+    local hourLast, minuteLast, secondLast = match(timeLast, "([^:]+):([^:]+):([^:]+)")
+
+
+    local now = {
+        year = tonumber(yearNow),
+        month = tonumber(monthNow),
+        day = tonumber(dayNow),
+        hour = tonumber(hourNow),
+        minute = tonumber(minuteNow),
+        second = tonumber(secondNow),
+    }
+    local last = {
+        year = tonumber(yearLast),
+        month = tonumber(monthLast),
+        day = tonumber(dayLast),
+        hour = tonumber(hourLast),
+        minute = tonumber(minuteLast),
+        second = tonumber(secondLast),
+    }
+
+    local elapsedSeconds = addon.professions.utils:timeMetric(last, now)
+    return elapsedSeconds >= addon.professions.WAIT_TIME_IN_SECONDS, elapsedSeconds
+end
+
+local function toggleScanButton()
+    local isEnough, elapsedSeconds = addon.professions.AH:hasEnoughTimePassed()
+    if isEnough then
+        addon.professions.gui.auctionHouse.frame.scanButton:SetEnabled(true)
+    else
+        addon.professions.gui.auctionHouse.frame.scanButton:SetEnabled(false)
+        C_Timer.After(elapsedSeconds, function ()
+            toggleScanButton()
+        end)
+    end
+end
+
 
 local function showCannotSearchAllMessage()
     if addon.professions.gui.cannotSearchAllMsgFrame then
@@ -399,11 +448,30 @@ local function scanEntireAH()
             return
         end
         QueryAuctionItems("", nil, nil, 0, nil, nil, true, nil, nil)
+        RXPData.professions.lastScanAt = addon.professions.utils:getCurrentDateTime()
         addon.professions.AH.session.sentQuery = true
+        addon.professions.gui.auctionHouse.frame.scanButton:SetEnabled(false)
+        C_Timer.After(addon.professions.WAIT_TIME_IN_SECONDS, function ()
+            toggleScanButton()
+        end)
     else
         ReplicateItems()
-        addon.professions.AH.session.sentQuery = true
-        addon.professions.AH.session.isForeverFullScanSuccessful = false
+        if addon.professions.gui.auctionHouse.frame:IsShown() then
+            addon.professions.gui.session.title = "Scanning full Auction House ..." --TODO: localize this
+            addon.professions.gui.auctionHouse.frame:GetParent():SetTitle(addon.professions.gui.session.title)
+        end
+        addon.professions.gui.auctionHouse.frame.scanButton:SetEnabled(false)
+        C_Timer.After(3, function ()
+            if addon.professions.AH.session.isScanning then
+                RXPData.professions.lastScanAt = addon.professions.utils:getCurrentDateTime()
+                addon.professions.AH.session.sentQuery = true
+                C_Timer.After(addon.professions.WAIT_TIME_IN_SECONDS, function ()
+                    toggleScanButton()
+                end)
+            else
+                scanEntireAH()
+            end
+        end)
     end
 end
 
@@ -423,6 +491,8 @@ function addon.professions.AH:AUCTION_HOUSE_SHOW()
         addon.professions.gui:CreateGui()
         addon.professions.gui.session.isGuiCreated = true
     end
+    --Disable scan button if not possible to do a full scan
+    toggleScanButton()
 end
 
 
@@ -456,7 +526,7 @@ function addon.professions.AH:AUCTION_ITEM_LIST_UPDATE()
             self.session.foundItems[itemID] = self.session.foundItems[itemID] or {}
             if buyoutPrice > 0 then
                 pricePerItem = ceil(buyoutPrice / count)
-                if pricePerItem <= PRICE_PER_ITEM_THRESHOLD then 
+                if pricePerItem <= PRICE_PER_ITEM_THRESHOLD then
                     self.session.foundItems[itemID][pricePerItem] = (self.session.foundItems[itemID][pricePerItem] or 0) + count
                 end
             end
@@ -481,10 +551,35 @@ local function foreverProcessEntireAHScan(scanIndex, totalAuctions)
 
     local name, count, buyoutPrice, owner, itemID, hasAllInfo
     local pricePerItem
+    local itemsStillLoading = 0
+    local item, saveScanIndex
     while scanIndex < totalAuctions do
         --name, texture, count, qualityID, usable, level, levelType, minBid, minIncrement, buyoutPrice, bidAmount, highBidder, bidderFullName, owner, ownerFullName, saleStatus, itemID, hasAllInfo = C_AuctionHouse.GetReplicateItemInfo(index) 
         name, _, count, _, _, _, _, _, _, buyoutPrice, _, _, _, owner, _, _, itemID, hasAllInfo = GetReplicateItemInfo(scanIndex)
-        if includeInFoundItems(itemID) then
+        if includeInFoundItems(itemID) and not hasAllInfo then
+            item = Item:CreateFromItemID(itemID)
+            itemsStillLoading = itemsStillLoading + 1
+            saveScanIndex = scanIndex
+            item:ContinueOnItemLoad(function ()
+                itemsStillLoading = itemsStillLoading - 1
+                name, _, count, _, _, _, _, _, _, buyoutPrice, _, _, _, owner, _, _, itemID, hasAllInfo = GetReplicateItemInfo(saveScanIndex)
+
+                addon.professions.AH.session.foundItems[itemID] = addon.professions.AH.session.foundItems[itemID] or {}
+                if buyoutPrice > 0 then
+                    pricePerItem = ceil(buyoutPrice / count)
+                    if pricePerItem <= PRICE_PER_ITEM_THRESHOLD then
+                        addon.professions.AH.session.foundItems[itemID][pricePerItem] = (addon.professions.AH.session.foundItems[itemID][pricePerItem] or 0) + count
+                    end
+                end
+
+                if itemsStillLoading == 0 then
+                    addon.professions.gui.session.title = "Done scanning" --TODO: localize this
+                    addon.professions.gui.auctionHouse.frame:GetParent():SetTitle(addon.professions.gui.session.title)
+                    addon.professions.AH.session.isScanning = false
+                    addon.professions.AH.session.sentQuery = false
+                end
+            end)
+        elseif includeInFoundItems(itemID) then
             addon.professions.AH.session.foundItems[itemID] = addon.professions.AH.session.foundItems[itemID] or {}
             if buyoutPrice > 0 then
                 pricePerItem = ceil(buyoutPrice / count)
@@ -495,30 +590,23 @@ local function foreverProcessEntireAHScan(scanIndex, totalAuctions)
         end
         scanIndex = scanIndex + 1
     end
-    addon.professions.gui.session.title = "Done scanning" --TODO: localize this
-    addon.professions.gui.auctionHouse.frame:GetParent():SetTitle(addon.professions.gui.session.title)
-    --We need to keep these disabled. Once the scan is done it can only be attempted by opening the AH again
-    --TODO: add a better update to these values with C_Time of 15 minutes!
-    --addon.professions.AH.session.isScanning = false
-    --addon.professions.AH.session.isInitialScan = true
+    if itemsStillLoading == 0 then
+        addon.professions.gui.session.title = "Done scanning" --TODO: localize this
+        addon.professions.gui.auctionHouse.frame:GetParent():SetTitle(addon.professions.gui.session.title)
+        addon.professions.AH.session.sentQuery = false
+    end
 end
 
 --Triggers on entire ah scan for forever
 function addon.professions.AH:REPLICATE_ITEM_LIST_UPDATE()
-    if not self.session.isInitialScan then return end
-    self.session.isForeverFullScanSuccessful = true
+    if self.session.isScanning or not self:hasEnoughTimePassed() then return end
 
-    if self.session.isInitialScan and addon.professions.gui.auctionHouse.frame:IsShown() then
+    if addon.professions.gui.auctionHouse.frame:IsShown() then
         addon.professions.gui.session.title = "Scanning full Auction House ..." --TODO: localize this
         addon.professions.gui.auctionHouse.frame:GetParent():SetTitle(addon.professions.gui.session.title)
     end
 
     local totalAuctions = GetNumReplicateItems()
-    self.session.isInitialScan = false
-    if totalAuctions == 0 then
-        showCannotSearchAllMessage()
-        return
-    end
 
     foreverProcessEntireAHScan(0, totalAuctions)
 end

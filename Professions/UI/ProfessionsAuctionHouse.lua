@@ -9,6 +9,7 @@ addon.professions.gui = {}
 -- Localize globlas
 local _G = _G
 local pairs, ipairs, next, type, tostring, tonumber, error, unpack = pairs, ipairs, next, type, tostring, tonumber, error, unpack
+local fmt = string.format
 
 -- Local renaming
 local CreateFrame, UIParent = CreateFrame, UIParent
@@ -67,6 +68,20 @@ local function createAuctionHouseCheckButton(parent, text)
     return checkButton, textFrame
 end
 
+local function updateTooltip(this)
+    GameTooltip:SetText("Scans the Auction House", 1, 1, 1) --TODO: localize this
+    if this:IsEnabled() then
+        GameTooltip:AddLine("Scans the entire Auction House for relevant information. This may be done only once every 15 minutes. The scan might take few seconds to finish, please be patient and DON'T MOVE!", 0.8, 0.8, 0.8, true) --TODO: localize this
+    else
+        local _, waitTime = addon.professions.AH:hasEnoughTimePassed()
+        waitTime = addon.professions.WAIT_TIME_IN_SECONDS - waitTime
+        local message
+        if waitTime < 60 then message = fmt("Cannot scan currently. Remaining time: %02d seconds", waitTime)
+        else message = fmt("Cannot scan currently. Remaining time: %02d:%02d", waitTime / 60, waitTime % 60) end
+        GameTooltip:AddLine(message, 0.8, 0.8, 0.8, true) --TODO: localize this
+    end
+end
+
 function addon.professions.gui:createMessageFrame(text, timeVisible)
     local messageFrame = CreateFrame("MessageFrame", nil, UIParent)
     messageFrame:SetPoint("TOP")
@@ -120,6 +135,9 @@ local function RegisterProfessionsAuctionHouse()
             GameTooltip:AddLine("Shows the export window with the generated export string", 0.8, 0.8, 0.8, true)
             GameTooltip:Show()
         end)
+        exportButton:SetScript("OnLeave", function ()
+            GameTooltip:Hide()
+        end)
 
         local scanButton = createAuctionHousePanelButton(frame, _G.SCAN or "Scan")
         scanButton:SetPoint("RIGHT", exportButton, "LEFT")
@@ -128,11 +146,23 @@ local function RegisterProfessionsAuctionHouse()
             addon.professions.AH:fullScan()
         end)
 
-        scanButton:SetScript("OnEnter", function (this)
+        local ticker
+        scanButton:SetMotionScriptsWhileDisabled(true)
+        scanButton:SetScript("OnEnter", function (this) --TODO: localize this
             GameTooltip:SetOwner(this, "ANCHOR_BOTTOM")
-            GameTooltip:SetText("Scans the Auction House", 1, 1, 1) --TODO: localize this
-            GameTooltip:AddLine("Scans the entire Auction House for relevant information. This may be done only once every 15 minutes. The scan might take few seconds to finish, please be patient and DON'T MOVE!", 0.8, 0.8, 0.8, true) --TODO: localize this
+            updateTooltip(this)
             GameTooltip:Show()
+            ticker = C_Timer.NewTicker(1, function ()
+                updateTooltip(this)
+                GameTooltip:Show()
+            end)
+        end)
+        scanButton:SetScript("OnLeave", function ()
+            if ticker then
+                ticker:Cancel()
+                ticker = nil
+            end
+            GameTooltip:Hide()
         end)
 
         frame.closeButton = closeButton
@@ -248,6 +278,9 @@ local function CreateModernGui()
         GameTooltip:AddLine("Shows the export window with the generated export string", 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
     end)
+    exportButton:SetScript("OnLeave", function ()
+        GameTooltip:Hide()
+    end)
 
     local scanButton = createAuctionHousePanelButton(frame, _G.SCAN or "Scan")
     scanButton:SetPoint("RIGHT", exportButton, "LEFT")
@@ -256,11 +289,23 @@ local function CreateModernGui()
         addon.professions.AH:fullScan()
     end)
 
-    scanButton:SetScript("OnEnter", function (this)
+    local ticker
+    scanButton:SetMotionScriptsWhileDisabled(true)
+    scanButton:SetScript("OnEnter", function (this) --TODO: localize this
         GameTooltip:SetOwner(this, "ANCHOR_BOTTOM")
-        GameTooltip:SetText("Scans the Auction House", 1, 1, 1) --TODO: localize this
-        GameTooltip:AddLine("Scans the entire Auction House for relevant information. This may be done only once every 15 minutes. The scan might take few seconds to finish, please be patient and DON'T MOVE!", 0.8, 0.8, 0.8, true) --TODO: localize this
+        updateTooltip(this)
         GameTooltip:Show()
+        ticker = C_Timer.NewTicker(1, function ()
+            updateTooltip(this)
+            GameTooltip:Show()
+        end)
+    end)
+    scanButton:SetScript("OnLeave", function ()
+        if ticker then
+            ticker:Cancel()
+            ticker = nil
+        end
+        GameTooltip:Hide()
     end)
 
     frame.closeButton = closeButton

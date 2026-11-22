@@ -60,6 +60,7 @@ ItemUpgrades.lua
 Professions/Professions.lua [AllowLoadGameType vanilla,tbc,camelot]
 Professions/DB/ProfessionsIds.lua [AllowLoadGameType vanilla,tbc,camelot]
 Professions/locale/ProfessionsLocale.lua [AllowLoadGameType vanilla,tbc,camelot]
+Professions/util/ProfessionsTimeUtils.lua [AllowLoadGameType vanilla,tbc,camelot]
 Professions/AH/ProfessionsAH.lua [AllowLoadGameType vanilla,tbc,camelot]
 Professions/Export/ProfessionsExport.lua [AllowLoadGameType vanilla,tbc,camelot]
 Professions/UI/ProfessionsAuctionHouse.lua [AllowLoadGameType vanilla,tbc,camelot]

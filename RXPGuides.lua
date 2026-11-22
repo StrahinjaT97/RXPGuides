@@ -1502,6 +1502,7 @@ function addon:OnInitialize()
 
     RXPCData.craftedItems = RXPCData.craftedItems or {}
     RXPCData.professions = RXPCData.professions or {}
+    RXPData.professions = RXPData.professions or {}
 
     local realm = _G.GetRealmName()
     RXPData.realmData = RXPData.realmData or {}
