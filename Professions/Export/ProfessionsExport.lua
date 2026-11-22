@@ -170,10 +170,12 @@ function addon.professions.export.ExportJSONData()
     local money = GetMoney()
     local overtimeLevel = RXPCData.professions.overtimeLevel or 0
     local now = time()
+    local realm = GetRealmName()
+    if realm == nil or realm == "" then realm = "TEST REALM" end
 
     local table = {
         schemaVersion = SCHEMA_VERSION,
-        realm = GetRealmName(),
+        realm = realm,
         region = REGIONS[GetCurrentRegion()] or tostring(GetCurrentRegion()),
         faction = faction,
         character = {
