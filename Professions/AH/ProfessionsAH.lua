@@ -556,8 +556,9 @@ local function foreverProcessEntireAHScan(scanIndex, totalAuctions)
     while scanIndex < totalAuctions do
         --name, texture, count, qualityID, usable, level, levelType, minBid, minIncrement, buyoutPrice, bidAmount, highBidder, bidderFullName, owner, ownerFullName, saleStatus, itemID, hasAllInfo = C_AuctionHouse.GetReplicateItemInfo(index) 
         name, _, count, _, _, _, _, _, _, buyoutPrice, _, _, _, owner, _, _, itemID, hasAllInfo = GetReplicateItemInfo(scanIndex)
-        if includeInFoundItems(itemID) and not hasAllInfo then
-            item = Item:CreateFromItemID(itemID)
+        --if includeInFoundItems(itemID) and not hasAllInfo then
+        if itemID and includeInFoundItems(itemID) then
+            --[[item = Item:CreateFromItemID(itemID)
             itemsStillLoading = itemsStillLoading + 1
             saveScanIndex = scanIndex
             item:ContinueOnItemLoad(function ()
@@ -578,8 +579,8 @@ local function foreverProcessEntireAHScan(scanIndex, totalAuctions)
                     addon.professions.AH.session.isScanning = false
                     addon.professions.AH.session.sentQuery = false
                 end
-            end)
-        elseif includeInFoundItems(itemID) then
+            end)]]
+        --elseif includeInFoundItems(itemID) then
             addon.professions.AH.session.foundItems[itemID] = addon.professions.AH.session.foundItems[itemID] or {}
             if buyoutPrice > 0 then
                 pricePerItem = ceil(buyoutPrice / count)
