@@ -39,7 +39,6 @@ end
 
 function addon.professions.gui:Reset()
     self.session.isAhOpen = false
-    self.session.isGuiCreated = false
 
     self.title = "RXP Professions"
 end
@@ -183,7 +182,7 @@ end
 
 local function CreateClassicGui()
     local self = addon.professions.gui
-    if self.session.isGuiCreated then return end
+    if self.session.isGuiCreated then print("returning") return end
 
     local attachment = _G.AuctionFrame
     if not attachment then return end
