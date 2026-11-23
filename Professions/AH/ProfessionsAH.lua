@@ -283,7 +283,7 @@ local function gatherPlayerFactionInfo()
     local name
     local raceID = select(3, UnitRace("player"))
     for i = 1, GetNumFactions() do
-        name = addon.professions.session.isClassic and GetFactionInfo(i) or GetFactionInfo(raceID)
+        name = addon.professions.session.isClassic and GetFactionInfo(i).name or GetFactionInfo(raceID).name
         if name and addon.professions.locale.FACTION_NAMES[name] then
             RXPCData.professions.faction = addon.professions.locale.FACTION_NAMES[name]
             break
@@ -629,4 +629,11 @@ function addon.professions.AH:exportInfo()
 
     addon.professions.export.ShowWindow()
 end
+
+
+SLASH_fac1 = '/fac'
+SlashCmdList['fac'] = function()
+    print(RXPCData.professions.faction)
+end
+
 
