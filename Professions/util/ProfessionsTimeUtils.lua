@@ -122,6 +122,7 @@ function addon.professions.utils:timeMetric(x, y)
         while (x.year ~= y.year) do
             seconds = seconds + SECONDS_IN_YEAR
             if (isLeapYear(x.year)) then seconds = seconds + 24 * 3600 end
+            x.year = x.year + 1
         end
         return seconds + secondsFromYearStart(y) - secondsFromYearStart(x)
     end

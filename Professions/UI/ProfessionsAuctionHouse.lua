@@ -10,6 +10,7 @@ addon.professions.gui = {}
 local _G = _G
 local pairs, ipairs, next, type, tostring, tonumber, error, unpack = pairs, ipairs, next, type, tostring, tonumber, error, unpack
 local fmt = string.format
+local max = math.max
 
 -- Local renaming
 local CreateFrame, UIParent = CreateFrame, UIParent
@@ -76,7 +77,8 @@ local function updateTooltip(this)
         local _, waitTime = addon.professions.AH:hasEnoughTimePassed()
         waitTime = addon.professions.WAIT_TIME_IN_SECONDS - waitTime
         local message
-        if waitTime < 60 then message = fmt("Cannot scan currently. Remaining time: %02d seconds", waitTime)
+        if waitTime < 0 and addon.professions.AH.session.sentQuery then message = fmt("Wait for scan to finish")
+        elseif waitTime < 60 then message = fmt("Cannot scan currently. Remaining time: %02d seconds", waitTime)
         else message = fmt("Cannot scan currently. Remaining time: %02d:%02d", waitTime / 60, waitTime % 60) end
         GameTooltip:AddLine(message, 0.8, 0.8, 0.8, true) --TODO: localize this
     end
