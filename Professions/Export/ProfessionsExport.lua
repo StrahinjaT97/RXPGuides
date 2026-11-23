@@ -8,7 +8,7 @@ addon.professions.export = {}
 -- Localize globals
 local _G = _G
 local pairs, ipairs, type, tostring, tsort, tconcat, tinsert = pairs, ipairs, type, tostring, table.sort, table.concat, table.insert
-local fmt, byte, gsub, floor = string.format, string.byte, string.gsub, math.floor
+local fmt, byte, gsub, floor, min = string.format, string.byte, string.gsub, math.floor, math.min
 local GetMoney, GetRealmName, GetCurrentRegion, time, date = _G.GetMoney, _G.GetRealmName, _G.GetCurrentRegion, _G.time, _G.date
 local UnitName, UnitClass = _G.UnitName, _G.UnitClass
 
@@ -23,6 +23,7 @@ local REGIONS = {
     [5] = "cn",
 }
 local ESCAPES = { ['"'] = '\\"', ['\\'] = '\\\\', ['\n'] = '\\n', ['\r'] = '\\r', ['\t'] = '\\t' }
+local MAX_PLAYER_MONEY = 2^31 - 1
 
 -- We distinguish an array from a table in the JSON format
 -- so we create a metatable of 'type' ARRAY here
@@ -167,7 +168,7 @@ function addon.professions.export.ExportJSONData()
     local useOverrides = false
 
     local faction = RXPCData.professions.faction
-    local money = GetMoney()
+    local money = min(GetMoney(), MAX_PLAYER_MONEY)
     local overtimeLevel = RXPCData.professions.overtimeLevel or 0
     local now = time()
     local realm = GetRealmName()
