@@ -421,7 +421,7 @@ local function toggleScanButton()
         addon.professions.gui.auctionHouse.frame.scanButton:SetEnabled(true)
     else
         addon.professions.gui.auctionHouse.frame.scanButton:SetEnabled(false)
-        C_Timer.After(elapsedSeconds, function ()
+        C_Timer.After(addon.professions.WAIT_TIME_IN_SECONDS - elapsedSeconds, function ()
             toggleScanButton()
         end)
     end
@@ -461,10 +461,10 @@ local function scanEntireAH()
             addon.professions.gui.auctionHouse.frame:GetParent():SetTitle(addon.professions.gui.session.title)
         end
         addon.professions.gui.auctionHouse.frame.scanButton:SetEnabled(false)
+        addon.professions.AH.session.sentQuery = true
         C_Timer.After(3, function ()
             if addon.professions.AH.session.isScanning then
                 RXPData.professions.lastScanAt = addon.professions.utils:getCurrentDateTime()
-                addon.professions.AH.session.sentQuery = true
                 C_Timer.After(addon.professions.WAIT_TIME_IN_SECONDS, function ()
                     toggleScanButton()
                 end)
