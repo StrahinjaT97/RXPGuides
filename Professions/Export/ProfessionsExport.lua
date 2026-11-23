@@ -169,6 +169,9 @@ local function auctionScan()
                 listingsLeft = listingsLeft - listings[i].quantity
             end
         end
+        if #listings > 0 then
+            items[#items + 1] = { itemId = itemId, listings = listings }
+        end
     end
     tsort(items, function(a, b) return a.itemId < b.itemId end)
 
