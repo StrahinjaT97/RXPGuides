@@ -552,35 +552,10 @@ local function foreverProcessEntireAHScan(scanIndex, totalAuctions)
     local name, count, buyoutPrice, owner, itemID, hasAllInfo
     local pricePerItem
     local itemsStillLoading = 0
-    local item, saveScanIndex
     while scanIndex < totalAuctions do
         --name, texture, count, qualityID, usable, level, levelType, minBid, minIncrement, buyoutPrice, bidAmount, highBidder, bidderFullName, owner, ownerFullName, saleStatus, itemID, hasAllInfo = C_AuctionHouse.GetReplicateItemInfo(index) 
         name, _, count, _, _, _, _, _, _, buyoutPrice, _, _, _, owner, _, _, itemID, hasAllInfo = GetReplicateItemInfo(scanIndex)
-        --if includeInFoundItems(itemID) and not hasAllInfo then
         if itemID and includeInFoundItems(itemID) then
-            --[[item = Item:CreateFromItemID(itemID)
-            itemsStillLoading = itemsStillLoading + 1
-            saveScanIndex = scanIndex
-            item:ContinueOnItemLoad(function ()
-                itemsStillLoading = itemsStillLoading - 1
-                name, _, count, _, _, _, _, _, _, buyoutPrice, _, _, _, owner, _, _, itemID, hasAllInfo = GetReplicateItemInfo(saveScanIndex)
-
-                addon.professions.AH.session.foundItems[itemID] = addon.professions.AH.session.foundItems[itemID] or {}
-                if buyoutPrice > 0 then
-                    pricePerItem = ceil(buyoutPrice / count)
-                    if pricePerItem <= PRICE_PER_ITEM_THRESHOLD then
-                        addon.professions.AH.session.foundItems[itemID][pricePerItem] = (addon.professions.AH.session.foundItems[itemID][pricePerItem] or 0) + count
-                    end
-                end
-
-                if itemsStillLoading == 0 then
-                    addon.professions.gui.session.title = "Done scanning" --TODO: localize this
-                    addon.professions.gui.auctionHouse.frame:GetParent():SetTitle(addon.professions.gui.session.title)
-                    addon.professions.AH.session.isScanning = false
-                    addon.professions.AH.session.sentQuery = false
-                end
-            end)]]
-        --elseif includeInFoundItems(itemID) then
             addon.professions.AH.session.foundItems[itemID] = addon.professions.AH.session.foundItems[itemID] or {}
             if buyoutPrice > 0 then
                 pricePerItem = ceil(buyoutPrice / count)

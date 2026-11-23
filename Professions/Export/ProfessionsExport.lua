@@ -157,7 +157,6 @@ local function auctionScan()
             listings[#listings + 1] = { unitPriceCopper = unitPrice, quantity = quantity }
         end
         tsort(listings, function(a, b) return a.unitPriceCopper < b.unitPriceCopper end)
-        --items[#items + 1] = { itemId = itemId, listings = listings }
         local listingsLeft = MAX_ITEM_QUANTITY
         for i = 1, #listings do
             if listingsLeft <= 0 then
