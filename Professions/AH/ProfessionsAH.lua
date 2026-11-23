@@ -551,7 +551,6 @@ local function foreverProcessEntireAHScan(scanIndex, totalAuctions)
 
     local name, count, buyoutPrice, owner, itemID, hasAllInfo
     local pricePerItem
-    local itemsStillLoading = 0
     while scanIndex < totalAuctions do
         --name, texture, count, qualityID, usable, level, levelType, minBid, minIncrement, buyoutPrice, bidAmount, highBidder, bidderFullName, owner, ownerFullName, saleStatus, itemID, hasAllInfo = C_AuctionHouse.GetReplicateItemInfo(index) 
         name, _, count, _, _, _, _, _, _, buyoutPrice, _, _, _, owner, _, _, itemID, hasAllInfo = GetReplicateItemInfo(scanIndex)
@@ -566,11 +565,10 @@ local function foreverProcessEntireAHScan(scanIndex, totalAuctions)
         end
         scanIndex = scanIndex + 1
     end
-    if itemsStillLoading == 0 then
-        addon.professions.gui.session.title = "Done scanning" --TODO: localize this
-        addon.professions.gui.auctionHouse.frame:GetParent():SetTitle(addon.professions.gui.session.title)
-        addon.professions.AH.session.sentQuery = false
-    end
+
+    addon.professions.gui.session.title = "Done scanning" --TODO: localize this
+    addon.professions.gui.auctionHouse.frame:GetParent():SetTitle(addon.professions.gui.session.title)
+    addon.professions.AH.session.sentQuery = false
 end
 
 --Triggers on entire ah scan for forever
