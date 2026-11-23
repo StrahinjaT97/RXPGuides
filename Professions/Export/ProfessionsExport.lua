@@ -24,7 +24,6 @@ local REGIONS = {
 }
 local ESCAPES = { ['"'] = '\\"', ['\\'] = '\\\\', ['\n'] = '\\n', ['\r'] = '\\r', ['\t'] = '\\t' }
 local MAX_PLAYER_MONEY = 2^31 - 1
-local MAX_ITEM_QUANTITY = 1e5
 
 -- We distinguish an array from a table in the JSON format
 -- so we create a metatable of 'type' ARRAY here
@@ -157,20 +156,7 @@ local function auctionScan()
             listings[#listings + 1] = { unitPriceCopper = unitPrice, quantity = quantity }
         end
         tsort(listings, function(a, b) return a.unitPriceCopper < b.unitPriceCopper end)
-        local listingsLeft = MAX_ITEM_QUANTITY
-        for i = 1, #listings do
-            if listingsLeft <= 0 then
-                listings[i] = nil
-            else
-                if listings[i].quantity > MAX_ITEM_QUANTITY then
-                    listings[i].quantity = listingsLeft
-                end
-                listingsLeft = listingsLeft - listings[i].quantity
-            end
-        end
-        if #listings > 0 then
-            items[#items + 1] = { itemId = itemId, listings = listings }
-        end
+        items[#items + 1] = { itemId = itemId, listings = listings }
     end
     tsort(items, function(a, b) return a.itemId < b.itemId end)
 
