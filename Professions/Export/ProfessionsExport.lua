@@ -9,7 +9,7 @@ addon.professions.export = {}
 local _G = _G
 local pairs, ipairs, type, tostring, tsort, tconcat, tinsert = pairs, ipairs, type, tostring, table.sort, table.concat, table.insert
 local fmt, byte, gsub, floor, min = string.format, string.byte, string.gsub, math.floor, math.min
-local GetMoney, GetCurrentRegion, time, date = _G.GetMoney, _G.GetCurrentRegion, _G.time, _G.date
+local GetMoney, GetRealmName, GetCurrentRegion, time, date = _G.GetMoney, _G.GetRealmName, _G.GetCurrentRegion, _G.time, _G.date
 local UnitName, UnitClass = _G.UnitName, _G.UnitClass
 
 
@@ -171,9 +171,12 @@ function addon.professions.export.ExportJSONData()
     local money = min(GetMoney(), MAX_PLAYER_MONEY)
     local overtimeLevel = RXPCData.professions.overtimeLevel or 0
     local now = time()
+    local realm = GetRealmName()
+    if realm == nil or realm == "" then realm = "TEST REALM" end
 
     local table = {
         schemaVersion = SCHEMA_VERSION,
+        realm = realm,
         region = REGIONS[GetCurrentRegion()] or tostring(GetCurrentRegion()),
         faction = faction,
         character = {
