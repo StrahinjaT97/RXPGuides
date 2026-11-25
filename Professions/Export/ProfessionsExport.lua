@@ -9,7 +9,8 @@ addon.professions.export = {}
 local _G = _G
 local pairs, ipairs, type, tostring, tsort, tconcat, tinsert = pairs, ipairs, type, tostring, table.sort, table.concat, table.insert
 local fmt, byte, gsub, floor, min = string.format, string.byte, string.gsub, math.floor, math.min
-local GetMoney, GetCurrentRegion, time, date = _G.GetMoney, _G.GetCurrentRegion, _G.time, _G.date
+local GetMoney, GetRealmName, GetCurrentRegion, time, date = _G.GetMoney, _G.GetRealmName, _G.GetCurrentRegion, _G.time, _G.date
+local IsGameRuleActive = _G.C_GameRules and _G.C_GameRules.IsGameRuleActive
 local UnitName, UnitClass = _G.UnitName, _G.UnitClass
 
 
@@ -164,16 +165,34 @@ local function auctionScan()
 end
 
 
-function addon.professions.export.ExportJSONData()
+local function getRuleset()
+    local ruleset = ""
+    if IsGameRuleActive(Enum.GameRule.HardcoreRuleset) then
+        ruleset = ruleset .. "HC "
+    end
+    if IsGameRuleActive(Enum.GameRule.RPRuleset) then
+        ruleset = ruleset .. "RP "
+    end
+    if IsGameRuleActive(Enum.GameRule.PvPRuleset) then
+        ruleset = ruleset .. "PvP"
+    else
+        ruleset = ruleset .. "PvE"
+    end
+    return ruleset
+end
+
+
+local function exportJSONDataClassic()
     local useOverrides = false
 
     local faction = RXPCData.professions.faction
     local money = min(GetMoney(), MAX_PLAYER_MONEY)
     local overtimeLevel = RXPCData.professions.overtimeLevel or 0
     local now = time()
-
+    local realm = GetRealmName()
     local table = {
         schemaVersion = SCHEMA_VERSION,
+        realm = realm,
         region = REGIONS[GetCurrentRegion()] or tostring(GetCurrentRegion()),
         faction = faction,
         character = {
@@ -198,6 +217,51 @@ function addon.professions.export.ExportJSONData()
     }
     if table.game == "TBC" then table.game = "CLASSIC" end
     return addon.professions.export.ToJSON(table)
+end
+
+local function exportJSONDataForever()
+    local useOverrides = false
+
+    local faction = RXPCData.professions.faction
+    local money = min(GetMoney(), MAX_PLAYER_MONEY)
+    local overtimeLevel = RXPCData.professions.overtimeLevel or 0
+    local now = time()
+    local ruleset = getRuleset()
+    local table = {
+        schemaVersion = SCHEMA_VERSION,
+        ruleset = ruleset,
+        region = REGIONS[GetCurrentRegion()] or tostring(GetCurrentRegion()),
+        faction = faction,
+        character = {
+            name = UnitName("player"),
+            class = select(2, UnitClass("player")),
+            race = select(2, UnitRace("player")),
+            level = addon.player.level,
+            moneyCopper = money,
+            overtimeLevel = overtimeLevel,
+        },
+        professions = professionsList(),
+        auctionScan = auctionScan(),
+
+        game = addon.game,
+        gameVersion = addon.gameVersion,
+        season = addon.player.season,
+        hardcore = addon.player.hardcore == true,
+        capturedAt = isoTime(now),
+        knownRecipes = knownRecipes(),
+        bags = RXPCData.craftedItems,
+        debugOverrides = useOverrides and true or false,
+    }
+    if table.game == "TBC" then table.game = "CLASSIC" end
+    return addon.professions.export.ToJSON(table)
+end
+
+function addon.professions.export.ExportJSONData()
+    if addon.professions.session.isClassic then
+        return exportJSONDataClassic()
+    else
+        return exportJSONDataForever()
+    end
 end
 
 local exportWindow
