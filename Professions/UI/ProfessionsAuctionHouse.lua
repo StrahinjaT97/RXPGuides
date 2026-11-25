@@ -57,17 +57,6 @@ local function createAuctionHousePanelButton(parent, text)
     return button
 end
 
-local function createAuctionHouseCheckButton(parent, text)
-    local checkButton = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
-    checkButton:SetSize(20, 20)
-    local textFrame = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    textFrame:SetText(text)
-
-    textFrame:SetPoint("RIGHT", checkButton, "LEFT", -10, 0)
-
-    return checkButton, textFrame
-end
-
 local function updateTooltip(this)
     GameTooltip:SetText("Scans the Auction House", 1, 1, 1) --TODO: localize this
     if this:IsEnabled() then
@@ -182,7 +171,7 @@ end
 
 local function CreateClassicGui()
     local self = addon.professions.gui
-    if self.session.isGuiCreated then print("returning") return end
+    if self.session.isGuiCreated then return end
 
     local attachment = _G.AuctionFrame
     if not attachment then return end

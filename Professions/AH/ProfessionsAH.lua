@@ -604,10 +604,3 @@ function addon.professions.AH:exportInfo()
     addon.professions.export.ShowWindow()
 end
 
-
-SLASH_fac1 = '/fac'
-SlashCmdList['fac'] = function()
-    print(RXPCData.professions.faction)
-end
-
-
