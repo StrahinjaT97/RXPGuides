@@ -97,6 +97,7 @@ local OVERTIME_IDS = {
 
 -- Local constants
 local PRICE_PER_ITEM_THRESHOLD = 5e5
+local FOREVER_FULL_SCAN_RETRY_TIME_IN_SECONDS = 3
 
 addon.professions.AH = addon:NewModule("ProfessionsAH", "AceEvent-3.0")
 
@@ -462,7 +463,7 @@ local function scanEntireAH()
         end
         addon.professions.gui.auctionHouse.frame.scanButton:SetEnabled(false)
         addon.professions.AH.session.sentQuery = true
-        C_Timer.After(3, function ()
+        C_Timer.After(FOREVER_FULL_SCAN_RETRY_TIME_IN_SECONDS, function ()
             if addon.professions.AH.session.isScanning then
                 RXPData.professions.lastScanAt = addon.professions.utils:getCurrentDateTime()
                 C_Timer.After(addon.professions.WAIT_TIME_IN_SECONDS, function ()
@@ -604,3 +605,7 @@ function addon.professions.AH:exportInfo()
     addon.professions.export.ShowWindow()
 end
 
+SLASH_setwait1 = '/setwait'
+SlashCmdList['setwait'] = function(seconds)
+    FOREVER_FULL_SCAN_RETRY_TIME_IN_SECONDS = seconds
+end
