@@ -119,7 +119,14 @@ SlashCmdList['realm'] = function()
     print(UnitGUID("player"))
 end
 
-SLASH_resettime1 = '/resettime'
+SLASH_showtime1 = '/showscantime'
+SlashCmdList['showtime'] = function()
+    print("Last scan at ", RXPData.professions.lastScanAt)
+end
+
+
+SLASH_resettime1 = '/resetscantime'
 SlashCmdList['resettime'] = function()
     RXPData.professions.lastScanAt = DEFAULT_LAST_SCAN
+    print("Reset lastScanAt to ", RXPData.professions.lastScanAt)
 end

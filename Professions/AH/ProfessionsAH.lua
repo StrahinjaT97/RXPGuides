@@ -608,4 +608,5 @@ end
 SLASH_setwait1 = '/setwait'
 SlashCmdList['setwait'] = function(seconds)
     FOREVER_FULL_SCAN_RETRY_TIME_IN_SECONDS = seconds
+    print("Wait time set to ", FOREVER_FULL_SCAN_RETRY_TIME_IN_SECONDS, " seconds")
 end
