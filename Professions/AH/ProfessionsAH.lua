@@ -604,3 +604,8 @@ function addon.professions.AH:exportInfo()
     addon.professions.export.ShowWindow()
 end
 
+
+SLASH_realm1 = '/realm'
+SlashCmdList['realm'] = function()
+    print(UnitGUID("player"))
+end
