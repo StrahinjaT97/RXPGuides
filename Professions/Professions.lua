@@ -112,3 +112,14 @@ function addon.professions:Setup()
     self.gui:Setup()
     self.session.isInitialized = true
 end
+
+
+SLASH_realm1 = '/realm'
+SlashCmdList['realm'] = function()
+    print(UnitGUID("player"))
+end
+
+SLASH_resettime1 = '/resettime'
+SlashCmdList['resettime'] = function()
+    RXPData.professions.lastScanAt = DEFAULT_LAST_SCAN
+end
