@@ -231,6 +231,7 @@ local function exportJSONDataForever()
         schemaVersion = SCHEMA_VERSION,
         ruleset = ruleset,
         region = REGIONS[GetCurrentRegion()] or tostring(GetCurrentRegion()),
+        auctionHouse = addon.professions.AH.session.auctionFaction,
         faction = faction,
         character = {
             name = UnitName("player"),
