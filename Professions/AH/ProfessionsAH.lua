@@ -106,6 +106,7 @@ addon.professions.WAIT_TIME_IN_SECONDS = 15 * 60
 
 addon.professions.AH.session = {
     isInitialized = false,
+    auctionFaction = "",
     auctionFilterButtons = {"Trade Goods"},
     foundItems = {},
     ahIsShowing = false,
@@ -207,6 +208,14 @@ local function initialScanInventoryForCraftedItems(prof1Name, prof2Name)
                 RXPCData.craftedItems[itemID] = (RXPCData.craftedItems[itemID] or 0) + itemCount
             end
         end
+    end
+end
+
+local function gatherAuctionFactionInfo()
+    if UnitFactionGroup("npc") == nil then
+        addon.professions.AH.session.auctionFaction = "Neutral"
+    else
+        addon.professions.AH.session.auctionFaction = "Faction"
     end
 end
 
@@ -488,6 +497,7 @@ function addon.professions.AH:AUCTION_HOUSE_SHOW()
         RXPCData.professions.isInitialScanned = true
     end
     gatherPlayerProfessionInfo()
+    gatherAuctionFactionInfo()
     if not addon.professions.gui.session.isGuiCreated then
         addon.professions.gui:CreateGui()
         addon.professions.gui.session.isGuiCreated = true
