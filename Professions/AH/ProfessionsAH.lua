@@ -211,9 +211,10 @@ local function initialScanInventoryForCraftedItems(prof1Name, prof2Name)
 end
 
 local function gatherAuctionFactionInfo()
-    addon.professions.AH.session.auctionFaction = UnitFactionGroup("npc")
-    if addon.professions.AH.session.auctionFaction == nil then
+    if UnitFactionGroup("npc") == nil then
         addon.professions.AH.session.auctionFaction = "Neutral"
+    else
+        addon.professions.AH.session.auctionFaction = "Faction"
     end
 end
 
